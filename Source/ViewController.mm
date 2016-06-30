@@ -12,13 +12,15 @@ using std::vector;
 #import "GLUtils.h"
 
 static const GLuint VertexAttrib_Position = 0;
-static const GLuint VertexAttrib_Normal = 0;
+static const GLuint VertexAttrib_Normal = 1;
 
 
 struct Vertex {
     GLfloat position[4];
     GLfloat normal[4];
 };
+
+typedef GLushort Index;
 
 
 @interface ViewController () {
@@ -35,14 +37,19 @@ struct Vertex {
 
 - (void) loadVertexBuffers;
 
+- (void) loadVertexArrays;
+
 @end
 
 @implementation ViewController {
 @private
     GLKView * _glkView;
+
     GLuint _shaderProgram;
     GLuint _vao;
-    GLuint _vbo;
+    GLuint _vbo_cube;
+    GLuint _indexBuffer_cube;
+    GLsizei _numCubeIndices;
 }
 
 
@@ -81,41 +88,13 @@ struct Vertex {
     [EAGLContext setCurrentContext:self.eaglContext];
     
     [self loadShaders];
-    
+
+    [self loadVertexBuffers];
+
+    [self loadVertexArrays];
+
     glClearColor(1, 1, 1, 1);
-    
-    
-    CGSize size = _glkView.frame.size;
-    GLfloat aspect = static_cast<GLfloat>(size.width) / size.height;
-    
-    // Define geometry
-    GLfloat square[] = {
-        -0.5f, -0.5f*aspect,
-        0.5f, -0.5f*aspect,
-        -0.5f, 0.5f*aspect,
-        0.5f, 0.5f*aspect
-    };
-    
-    glGenBuffers(1, &_vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, _vbo);
-    size_t numBytes = sizeof(square);
-    glBufferData(GL_ARRAY_BUFFER, numBytes, square, GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    
-    
-    glGenVertexArrays(1, &_vao);
-    glBindVertexArray(_vao);
-    
-    
-    glEnableVertexAttribArray(VertexAttrib_Position);
-    
-    glBindBuffer(GL_ARRAY_BUFFER, _vbo);
-    glVertexAttribPointer(VertexAttrib_Position, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    
-    glBindVertexArray(0);
-    
-    CHECK_GL_ERRORS;
+
 }
 
 //---------------------------------------------------------------------------------------
@@ -160,7 +139,84 @@ struct Vertex {
         {  0.5f,  0.5f,  0.5f,   0.0f,  0.0f,  1.0f}, // 22
         { -0.5f,  0.5f,  0.5f,   0.0f,  0.0f,  1.0f}, // 23
     };
+
+    // Load Vertex Data
+    {
+        glGenBuffers(1, &_vbo_cube);
+        glBindBuffer(GL_ARRAY_BUFFER, _vbo_cube);
+        size_t numBytes = vertexData.size() * sizeof(Vertex);
+        glBufferData(GL_ARRAY_BUFFER, numBytes, vertexData.data(), GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        CHECK_GL_ERRORS;
+    }
+
+
+    std::vector<Index> indexData = {
+            // Bottom
+            3,1,0, 3,2,1,
+            // Top
+            7,4,5, 7,5,6,
+            // Left
+            8,10,9, 10,11,9,
+            // Back
+            12,15,13, 15,14,13,
+            // Right
+            16,17,19, 17,18,19,
+            // Front
+            20,21,23, 21,22,23
+    };
+    _numCubeIndices = static_cast<GLsizei>(indexData.size());
+
+    // Load Index Data
+    {
+        glGenBuffers(1, &_indexBuffer_cube);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _indexBuffer_cube);
+        size_t numBytes = indexData.size() * sizeof(Index);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, numBytes, indexData.data(), GL_STATIC_DRAW);
+        CHECK_GL_ERRORS;
+    }
 }
+
+//---------------------------------------------------------------------------------------
+- (void)loadVertexArrays
+{
+    glGenVertexArrays(1, &_vao);
+    glBindVertexArray(_vao);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _indexBuffer_cube);
+
+    // Enable vertex attribute slots
+    {
+        glBindVertexArray(_vao);
+        glEnableVertexAttribArray(VertexAttrib_Position);
+        glEnableVertexAttribArray(VertexAttrib_Normal);
+    }
+
+    // Bind for use with glVertexAttribPointer(...).
+    glBindBuffer(GL_ARRAY_BUFFER, _vbo_cube);
+    
+    // Position data mapping from VBO to vertex attribute slot
+    {
+        GLint stride = sizeof(Vertex);
+        GLint startOffset(0);
+        glVertexAttribPointer(VertexAttrib_Position, 3, GL_FLOAT, GL_FALSE, stride,
+            reinterpret_cast<const GLvoid *>(startOffset));
+    }
+    
+    // Normal data mapping from VBO to vertex attribute slot
+    {
+        GLint stride = sizeof(Vertex);
+        GLint startOffset = sizeof(Vertex::position);
+        glVertexAttribPointer(VertexAttrib_Normal, 3, GL_FLOAT, GL_FALSE, stride,
+            reinterpret_cast<const GLvoid *>(startOffset));
+    }
+
+
+    //-- Unbind, and restore defaults
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+    CHECK_GL_ERRORS;
+}
+
 
 //---------------------------------------------------------------------------------------
 - (void) update
@@ -182,13 +238,15 @@ struct Vertex {
     
     glUseProgram(_shaderProgram);
     glBindVertexArray(_vao);
-    
+
     VALIDATE_GL_PROGRAM(_shaderProgram);
     
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    
+    glDrawElements(GL_TRIANGLES, _numCubeIndices, GL_UNSIGNED_SHORT, nullptr);
+
     glBindVertexArray(0);
     glUseProgram(0);
+    CHECK_GL_ERRORS;
+
 }
 
 
@@ -300,7 +358,7 @@ struct Vertex {
 {
     [EAGLContext setCurrentContext:self.eaglContext];
     
-    glDeleteBuffers(1, &_vbo);
+    glDeleteBuffers(1, &_vbo_cube);
     glDeleteVertexArrays(1, &_vao);
     
     if (_shaderProgram) {

@@ -2,8 +2,9 @@
 
 precision mediump float;
 
-in vec4 position;
+in vec3 position;
+in vec3 normal;
 
 void main() { 
-    gl_Position = position;
+    gl_Position = vec4(position, 1.0f);
 } 
