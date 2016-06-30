@@ -4,8 +4,20 @@
 
 #import "ViewController.h"
 
-@interface ViewController ()
 
+@interface ViewController () {
+    
+}
+    
+@property (strong, nonatomic) EAGLContext * eaglContext;
+
+- (void) setupGL;
+- (void)tearDownGL;
+
+- (BOOL)loadShaders;
+- (BOOL)compileShader:(GLuint *)shader type:(GLenum)type file:(NSString *)file;
+- (BOOL)linkProgram:(GLuint)prog;
+- (BOOL)validateProgram:(GLuint)prog;
 @end
 
 @implementation ViewController {
@@ -16,21 +28,22 @@
     GLuint _vbo;
 }
 
+
+//---------------------------------------------------------------------------------------
 - (void)viewDidLoad
 {
     [super viewDidLoad];
     
     // Create a context
-    EAGLContext *context = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES3];
-    if (!context) {
+    self.eaglContext = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES3];
+    if (!self.eaglContext) {
         NSLog(@"This device does not support OpenGL ES 3.0");
     }
-    [EAGLContext setCurrentContext:context];
     
     // Create a GLKit View
     self.view = [[GLKView alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
     _glkView = (GLKView *)self.view;
-    _glkView.context = context;
+    _glkView.context = self.eaglContext;
     
     // Configure renderbuffers created by the view
     _glkView.drawableColorFormat = GLKViewDrawableColorFormatRGBA8888;
@@ -41,15 +54,16 @@
     self.preferredFramesPerSecond = 60;
     
     
-    
-    // Set the viewport
-    GLsizei width = 2*_glkView.frame.size.width;
-    GLsizei height = 2*_glkView.frame.size.height;
-    glViewport(0, 0, width, height);
-    
-    // Clear
-    glClearColor(1, 1, 1, 1);
+    [self setupGL];
+}
 
+
+//---------------------------------------------------------------------------------------
+- (void) setupGL
+{
+    [EAGLContext setCurrentContext:self.eaglContext];
+    
+    glClearColor(1, 1, 1, 1);
     
     // Read vertex shader source
     NSString * vertexShaderSource = [NSString stringWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"VertexShader" ofType:@"glsl"] encoding:NSUTF8StringEncoding error:nil];
@@ -76,7 +90,8 @@
     glLinkProgram(_shaderProgram);
     
     
-    GLfloat aspect = static_cast<GLfloat>(width) / height;
+    CGSize size = _glkView.frame.size;
+    GLfloat aspect = static_cast<GLfloat>(size.width) / size.height;
     
     // Define geometry
     GLfloat square[] = {
@@ -97,30 +112,34 @@
     glBindVertexArray(_vao);
     
     
-    glUseProgram(_shaderProgram);
-        const char * aPositionCString = [@"a_position" cStringUsingEncoding:NSUTF8StringEncoding];
-        GLuint aPosition = glGetAttribLocation(_shaderProgram, aPositionCString);
-        glEnableVertexAttribArray(aPosition);
-    glUseProgram(0);
+    const char * aPositionCString = [@"a_position" cStringUsingEncoding:NSUTF8StringEncoding];
+    GLuint aPosition = glGetAttribLocation(_shaderProgram, aPositionCString);
+    glEnableVertexAttribArray(aPosition);
     
     glBindBuffer(GL_ARRAY_BUFFER, _vbo);
     glVertexAttribPointer(aPosition, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     
     glBindVertexArray(0);
+    
+    CHECK_GL_ERRORS;
 }
 
 
-
+//---------------------------------------------------------------------------------------
 - (void) update
 {
     // Update per frame constants here.
 }
 
 
-
+//---------------------------------------------------------------------------------------
 - (void)glkView:(GLKView *)view drawInRect:(CGRect)rect
 {
+    GLint width = static_cast<GLint>(_glkView.drawableWidth);
+    GLint height = static_cast<GLint>(_glkView.drawableHeight);
+    glViewport(0, 0, width, height);
+    
     // Clear the framebuffer
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -132,6 +151,46 @@
     
     glBindVertexArray(0);
     glUseProgram(0);
+}
+
+//---------------------------------------------------------------------------------------
+- (void)tearDownGL
+{
+    // TODO - Implement this.
+}
+
+//---------------------------------------------------------------------------------------
+- (BOOL)loadShaders
+{
+    
+    // TODO - Implement this.
+    
+    return YES;
+}
+
+- (BOOL)compileShader:(GLuint *)shader type:(GLenum)type file:(NSString *)file
+{
+    
+    // TODO - Implement this.
+    
+    return YES;
+}
+
+
+- (BOOL)linkProgram:(GLuint)prog
+{
+    
+    // TODO - Implement this.
+    
+    return YES;
+}
+
+- (BOOL)validateProgram:(GLuint)prog
+{
+    
+    // TODO - Implement this.
+    
+    return YES;
 }
 
 
