@@ -1,5 +1,5 @@
 //
-// Prefix header for all source files of the 'OpenGL' target in the 'OpenGL' project
+// Prefix header for all source files project
 //
 
 #ifdef __OBJC__
@@ -7,6 +7,7 @@
     #import <Foundation/Foundation.h>
 
     #import <OpenGLES/EAGL.h>
-    #import <OpenGLES/ES2/gl.h>
+    #import <OpenGLES/ES3/gl.h>
+    #import <OpenGLES/ES3/glext.h>
     #import <QuartzCore/QuartzCore.h>
 #endif

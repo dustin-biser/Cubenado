@@ -3,7 +3,6 @@
 //
 
 #import "ViewController.h"
-#import "GLView.h"
 
 @interface ViewController ()
 
@@ -15,11 +14,14 @@
     [super viewDidLoad];
     
     // Create a context
-    EAGLContext *context = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
+    EAGLContext *context = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES3];
+    if (!context) {
+        NSLog(@"This device does not support OpenGL ES 3.0");
+    }
     [EAGLContext setCurrentContext:context];
     
-    // Create a view
-    GLView *glView = [[GLView alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
+    // Create a GLKit View
+    GLKView *glView = [[GLKView alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
     [self.view addSubview:glView];
     
     // Create a renderbuffer
@@ -75,7 +77,8 @@
         -0.5, -0.5,
         0.5, -0.5,
         -0.5, 0.5,
-        0.5, 0.5};
+        0.5, 0.5
+    };
     
     //Send geometry to vertex shader
     const char *aPositionCString = [@"a_position" cStringUsingEncoding:NSUTF8StringEncoding];
