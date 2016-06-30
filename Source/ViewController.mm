@@ -3,10 +3,22 @@
 //
 
 #import "ViewController.h"
+
+#import <vector>
+using std::vector;
+
 #import <glm/glm.hpp>
+
+#import "GLUtils.h"
 
 static const GLuint VertexAttrib_Position = 0;
 static const GLuint VertexAttrib_Normal = 0;
+
+
+struct Vertex {
+    GLfloat position[4];
+    GLfloat normal[4];
+};
 
 
 @interface ViewController () {
@@ -16,12 +28,13 @@ static const GLuint VertexAttrib_Normal = 0;
 @property (strong, nonatomic) EAGLContext * eaglContext;
 
 - (void) setupGL;
+
 - (void)tearDownGL;
 
-- (BOOL)loadShaders;
-- (BOOL)compileShader:(GLuint *)shader type:(GLenum)type file:(NSString *)file;
-- (BOOL)linkProgram:(GLuint)prog;
-- (BOOL)validateProgram:(GLuint)prog;
+- (void)loadShaders;
+
+- (void) loadVertexBuffers;
+
 @end
 
 @implementation ViewController {
@@ -105,6 +118,49 @@ static const GLuint VertexAttrib_Normal = 0;
     CHECK_GL_ERRORS;
 }
 
+//---------------------------------------------------------------------------------------
+- (void) loadVertexBuffers
+{
+    // Cube vertex data.
+    std::vector<Vertex> vertexData = {
+        // Positions             Normals
+        // Bottom
+        { -0.5f, -0.5f,  0.5f,   0.0f, -1.0f,  0.0f}, // 0
+        {  0.5f, -0.5f,  0.5f,   0.0f, -1.0f,  0.0f}, // 1
+        {  0.5f, -0.5f, -0.5f,   0.0f, -1.0f,  0.0f}, // 2
+        { -0.5f, -0.5f, -0.5f,   0.0f, -1.0f,  0.0f}, // 3
+        
+        // Top
+        { -0.5f,  0.5f,  0.5f,   0.0f,  1.0f,  0.0f}, // 4
+        {  0.5f,  0.5f,  0.5f,   0.0f,  1.0f,  0.0f}, // 5
+        {  0.5f,  0.5f, -0.5f,   0.0f,  1.0f,  0.0f}, // 6
+        { -0.5f,  0.5f, -0.5f,   0.0f,  1.0f,  0.0f}, // 7
+        
+        // Left
+        { -0.5f, -0.5f,  0.5f,  -1.0f,  0.0f,  0.0f}, // 8
+        { -0.5f, -0.5f, -0.5f,  -1.0f,  0.0f,  0.0f}, // 9
+        { -0.5f,  0.5f,  0.5f,  -1.0f,  0.0f,  0.0f}, // 10
+        { -0.5f,  0.5f, -0.5f,  -1.0f,  0.0f,  0.0f}, // 11
+        
+        // Back
+        { -0.5f, -0.5f, -0.5f,   0.0f,  0.0f, -1.0f}, // 12
+        {  0.5f, -0.5f, -0.5f,   0.0f,  0.0f, -1.0f}, // 13
+        {  0.5f,  0.5f, -0.5f,   0.0f,  0.0f, -1.0f}, // 14
+        { -0.5f,  0.5f, -0.5f,   0.0f,  0.0f, -1.0f}, // 15
+        
+        // Right
+        {  0.5f, -0.5f,  0.5f,   1.0f,  0.0f,  0.0f}, // 16
+        {  0.5f, -0.5f, -0.5f,   1.0f,  0.0f,  0.0f}, // 17
+        {  0.5f,  0.5f, -0.5f,   1.0f,  0.0f,  0.0f}, // 18
+        {  0.5f,  0.5f,  0.5f,   1.0f,  0.0f,  0.0f}, // 19
+        
+        // Front
+        { -0.5f, -0.5f,  0.5f,   0.0f,  0.0f,  1.0f}, // 20
+        {  0.5f, -0.5f,  0.5f,   0.0f,  0.0f,  1.0f}, // 21
+        {  0.5f,  0.5f,  0.5f,   0.0f,  0.0f,  1.0f}, // 22
+        { -0.5f,  0.5f,  0.5f,   0.0f,  0.0f,  1.0f}, // 23
+    };
+}
 
 //---------------------------------------------------------------------------------------
 - (void) update
@@ -127,8 +183,7 @@ static const GLuint VertexAttrib_Normal = 0;
     glUseProgram(_shaderProgram);
     glBindVertexArray(_vao);
     
-    // Validate program
-    [self validateProgram:_shaderProgram];
+    VALIDATE_GL_PROGRAM(_shaderProgram);
     
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     
@@ -136,8 +191,9 @@ static const GLuint VertexAttrib_Normal = 0;
     glUseProgram(0);
 }
 
+
 //---------------------------------------------------------------------------------------
-- (BOOL)loadShaders
+- (void)loadShaders
 {
     GLuint vertShader, fragShader;
     NSString *vertShaderPathname, *fragShaderPathname;
@@ -151,16 +207,16 @@ static const GLuint VertexAttrib_Normal = 0;
     
     // Create and compile vertex shader.
     vertShaderPathname = [[NSBundle mainBundle] pathForResource:@"VertexShader" ofType:@"glsl"];
-    if (![self compileShader:&vertShader type:GL_VERTEX_SHADER file:vertShaderPathname]) {
+    if (![GLUtils compileShader:&vertShader type:GL_VERTEX_SHADER file:vertShaderPathname]) {
         NSLog(@"Failed to compile vertex shader");
-        return NO;
+        throw;
     }
     
     // Create and compile fragment shader.
     fragShaderPathname = [[NSBundle mainBundle] pathForResource:@"FragmentShader" ofType:@"glsl"];
-    if (![self compileShader:&fragShader type:GL_FRAGMENT_SHADER file:fragShaderPathname]) {
+    if (![GLUtils compileShader:&fragShader type:GL_FRAGMENT_SHADER file:fragShaderPathname]) {
         NSLog(@"Failed to compile fragment shader");
-        return NO;
+        throw;
     }
     
     // Attach vertex shader to program.
@@ -176,7 +232,7 @@ static const GLuint VertexAttrib_Normal = 0;
     CHECK_GL_ERRORS;
     
     // Link program.
-    if (![self linkProgram:_shaderProgram]) {
+    if (![GLUtils linkProgram:_shaderProgram]) {
         NSLog(@"Failed to link program: %d", _shaderProgram);
         
         if (vertShader) {
@@ -192,7 +248,7 @@ static const GLuint VertexAttrib_Normal = 0;
             _shaderProgram = 0;
         }
         
-        return NO;
+        throw;
     }
     
     // Release vertex and fragment shaders.
@@ -205,100 +261,9 @@ static const GLuint VertexAttrib_Normal = 0;
         glDeleteShader(fragShader);
     }
     
-    return YES;
-}
-
-
-//---------------------------------------------------------------------------------------
-- (BOOL)compileShader:(GLuint *)shader type:(GLenum)shaderType file:(NSString *)file
-{
-    GLint status;
-    const GLchar *source;
-    
- 
-    source = (GLchar *)[[NSString stringWithContentsOfFile:file encoding:NSUTF8StringEncoding error:nil] UTF8String];
-    if (!source) {
-        NSLog(@"Failed to load vertex shader");
-        return NO;
-    }
-    
-    *shader = glCreateShader(shaderType);
     CHECK_GL_ERRORS;
-    
-    glShaderSource(*shader, 1, &source, NULL);
-    
-    glCompileShader(*shader);
-    CHECK_GL_ERRORS;
-    
-#if defined(DEBUG)
-    GLint logLength;
-    glGetShaderiv(*shader, GL_INFO_LOG_LENGTH, &logLength);
-    if (logLength > 0) {
-        GLchar *log = (GLchar *)malloc(logLength);
-        glGetShaderInfoLog(*shader, logLength, &logLength, log);
-        NSLog(@"Shader compile log:\n%s", log);
-        free(log);
-    }
-#endif
-    
-    glGetShaderiv(*shader, GL_COMPILE_STATUS, &status);
-    if (status == 0) {
-        glDeleteShader(*shader);
-        return NO;
-    }
-    
-    return YES;
 }
 
-
-//---------------------------------------------------------------------------------------
-- (BOOL)linkProgram:(GLuint)prog
-{
-    
-    GLint status;
-    glLinkProgram(prog);
-    CHECK_GL_ERRORS;
-    
-#if defined(DEBUG)
-    GLint logLength;
-    glGetProgramiv(prog, GL_INFO_LOG_LENGTH, &logLength);
-    if (logLength > 0) {
-        GLchar *log = (GLchar *)malloc(logLength);
-        glGetProgramInfoLog(prog, logLength, &logLength, log);
-        NSLog(@"Program link log:\n%s", log);
-        free(log);
-    }
-#endif
-    
-    glGetProgramiv(prog, GL_LINK_STATUS, &status);
-    if (status == 0) {
-        return NO;
-    }
-    
-    return YES;
-}
-
-//---------------------------------------------------------------------------------------
-- (BOOL)validateProgram:(GLuint)prog
-{
-    GLint logLength, status;
-    
-    glValidateProgram(prog);
-    glGetProgramiv(prog, GL_INFO_LOG_LENGTH, &logLength);
-    if (logLength > 0) {
-        GLchar *log = (GLchar *)malloc(logLength);
-        glGetProgramInfoLog(prog, logLength, &logLength, log);
-        NSLog(@"Program validate log:\n%s", log);
-        free(log);
-    }
-    
-    glGetProgramiv(prog, GL_VALIDATE_STATUS, &status);
-    if (status == 0) {
-        return NO;
-    }
-    
-    return YES;
-}
 
 //---------------------------------------------------------------------------------------
 - (void)dealloc
