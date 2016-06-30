@@ -3,6 +3,10 @@
 //
 
 #import "ViewController.h"
+#import <glm/glm.hpp>
+
+static const GLuint VertexAttrib_Position = 0;
+static const GLuint VertexAttrib_Normal = 0;
 
 
 @interface ViewController () {
@@ -34,7 +38,7 @@
 {
     [super viewDidLoad];
     
-    // Create a context
+    // Create a the GL context
     self.eaglContext = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES3];
     if (!self.eaglContext) {
         NSLog(@"This device does not support OpenGL ES 3.0");
@@ -45,7 +49,7 @@
     _glkView = (GLKView *)self.view;
     _glkView.context = self.eaglContext;
     
-    // Configure renderbuffers created by the view
+    // Configure renderbuffers created by the GLKView
     _glkView.drawableColorFormat = GLKViewDrawableColorFormatRGBA8888;
     _glkView.drawableDepthFormat = GLKViewDrawableDepthFormat24;
     _glkView.drawableStencilFormat = GLKViewDrawableStencilFormat8;
@@ -63,31 +67,9 @@
 {
     [EAGLContext setCurrentContext:self.eaglContext];
     
+    [self loadShaders];
+    
     glClearColor(1, 1, 1, 1);
-    
-    // Read vertex shader source
-    NSString * vertexShaderSource = [NSString stringWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"VertexShader" ofType:@"glsl"] encoding:NSUTF8StringEncoding error:nil];
-    const char * vertexShaderSourceCString = [vertexShaderSource cStringUsingEncoding:NSUTF8StringEncoding];
-    
-    // Create and compile vertex shader
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSourceCString, NULL);
-    glCompileShader(vertexShader);
-    
-    // Read fragment shader source
-    NSString * fragmentShaderSource = [NSString stringWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"FragmentShader" ofType:@"glsl"] encoding:NSUTF8StringEncoding error:nil];
-    const char * fragmentShaderSourceCString = [fragmentShaderSource cStringUsingEncoding:NSUTF8StringEncoding];
-    
-    // Create and compile fragment shader
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSourceCString, NULL);
-    glCompileShader(fragmentShader);
-    
-    // Create and link program
-    _shaderProgram = glCreateProgram();
-    glAttachShader(_shaderProgram, vertexShader);
-    glAttachShader(_shaderProgram, fragmentShader);
-    glLinkProgram(_shaderProgram);
     
     
     CGSize size = _glkView.frame.size;
@@ -112,12 +94,10 @@
     glBindVertexArray(_vao);
     
     
-    const char * aPositionCString = [@"a_position" cStringUsingEncoding:NSUTF8StringEncoding];
-    GLuint aPosition = glGetAttribLocation(_shaderProgram, aPositionCString);
-    glEnableVertexAttribArray(aPosition);
+    glEnableVertexAttribArray(VertexAttrib_Position);
     
     glBindBuffer(GL_ARRAY_BUFFER, _vbo);
-    glVertexAttribPointer(aPosition, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+    glVertexAttribPointer(VertexAttrib_Position, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     
     glBindVertexArray(0);
@@ -147,6 +127,9 @@
     glUseProgram(_shaderProgram);
     glBindVertexArray(_vao);
     
+    // Validate program
+    [self validateProgram:_shaderProgram];
+    
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     
     glBindVertexArray(0);
@@ -154,44 +137,213 @@
 }
 
 //---------------------------------------------------------------------------------------
-- (void)tearDownGL
-{
-    // TODO - Implement this.
-}
-
-//---------------------------------------------------------------------------------------
 - (BOOL)loadShaders
 {
+    GLuint vertShader, fragShader;
+    NSString *vertShaderPathname, *fragShaderPathname;
     
-    // TODO - Implement this.
+    // Create shader program.
+    _shaderProgram = glCreateProgram();
+    if(_shaderProgram == 0) {
+        NSLog(@"Failed to create shader program.");
+        throw;
+    }
+    
+    // Create and compile vertex shader.
+    vertShaderPathname = [[NSBundle mainBundle] pathForResource:@"VertexShader" ofType:@"glsl"];
+    if (![self compileShader:&vertShader type:GL_VERTEX_SHADER file:vertShaderPathname]) {
+        NSLog(@"Failed to compile vertex shader");
+        return NO;
+    }
+    
+    // Create and compile fragment shader.
+    fragShaderPathname = [[NSBundle mainBundle] pathForResource:@"FragmentShader" ofType:@"glsl"];
+    if (![self compileShader:&fragShader type:GL_FRAGMENT_SHADER file:fragShaderPathname]) {
+        NSLog(@"Failed to compile fragment shader");
+        return NO;
+    }
+    
+    // Attach vertex shader to program.
+    glAttachShader(_shaderProgram, vertShader);
+    
+    // Attach fragment shader to program.
+    glAttachShader(_shaderProgram, fragShader);
+    
+    // Bind attribute locations.
+    // This needs to be done prior to linking.
+    glBindAttribLocation(_shaderProgram, VertexAttrib_Position, "position");
+    glBindAttribLocation(_shaderProgram, VertexAttrib_Normal, "normal");
+    CHECK_GL_ERRORS;
+    
+    // Link program.
+    if (![self linkProgram:_shaderProgram]) {
+        NSLog(@"Failed to link program: %d", _shaderProgram);
+        
+        if (vertShader) {
+            glDeleteShader(vertShader);
+            vertShader = 0;
+        }
+        if (fragShader) {
+            glDeleteShader(fragShader);
+            fragShader = 0;
+        }
+        if (_shaderProgram) {
+            glDeleteProgram(_shaderProgram);
+            _shaderProgram = 0;
+        }
+        
+        return NO;
+    }
+    
+    // Release vertex and fragment shaders.
+    if (vertShader) {
+        glDetachShader(_shaderProgram, vertShader);
+        glDeleteShader(vertShader);
+    }
+    if (fragShader) {
+        glDetachShader(_shaderProgram, fragShader);
+        glDeleteShader(fragShader);
+    }
     
     return YES;
 }
 
-- (BOOL)compileShader:(GLuint *)shader type:(GLenum)type file:(NSString *)file
+
+//---------------------------------------------------------------------------------------
+- (BOOL)compileShader:(GLuint *)shader type:(GLenum)shaderType file:(NSString *)file
 {
+    GLint status;
+    const GLchar *source;
     
-    // TODO - Implement this.
+ 
+    source = (GLchar *)[[NSString stringWithContentsOfFile:file encoding:NSUTF8StringEncoding error:nil] UTF8String];
+    if (!source) {
+        NSLog(@"Failed to load vertex shader");
+        return NO;
+    }
+    
+    *shader = glCreateShader(shaderType);
+    CHECK_GL_ERRORS;
+    
+    glShaderSource(*shader, 1, &source, NULL);
+    
+    glCompileShader(*shader);
+    CHECK_GL_ERRORS;
+    
+#if defined(DEBUG)
+    GLint logLength;
+    glGetShaderiv(*shader, GL_INFO_LOG_LENGTH, &logLength);
+    if (logLength > 0) {
+        GLchar *log = (GLchar *)malloc(logLength);
+        glGetShaderInfoLog(*shader, logLength, &logLength, log);
+        NSLog(@"Shader compile log:\n%s", log);
+        free(log);
+    }
+#endif
+    
+    glGetShaderiv(*shader, GL_COMPILE_STATUS, &status);
+    if (status == 0) {
+        glDeleteShader(*shader);
+        return NO;
+    }
     
     return YES;
 }
 
 
+//---------------------------------------------------------------------------------------
 - (BOOL)linkProgram:(GLuint)prog
 {
     
-    // TODO - Implement this.
+    GLint status;
+    glLinkProgram(prog);
+    CHECK_GL_ERRORS;
+    
+#if defined(DEBUG)
+    GLint logLength;
+    glGetProgramiv(prog, GL_INFO_LOG_LENGTH, &logLength);
+    if (logLength > 0) {
+        GLchar *log = (GLchar *)malloc(logLength);
+        glGetProgramInfoLog(prog, logLength, &logLength, log);
+        NSLog(@"Program link log:\n%s", log);
+        free(log);
+    }
+#endif
+    
+    glGetProgramiv(prog, GL_LINK_STATUS, &status);
+    if (status == 0) {
+        return NO;
+    }
     
     return YES;
 }
 
+//---------------------------------------------------------------------------------------
 - (BOOL)validateProgram:(GLuint)prog
 {
+    GLint logLength, status;
     
-    // TODO - Implement this.
+    glValidateProgram(prog);
+    glGetProgramiv(prog, GL_INFO_LOG_LENGTH, &logLength);
+    if (logLength > 0) {
+        GLchar *log = (GLchar *)malloc(logLength);
+        glGetProgramInfoLog(prog, logLength, &logLength, log);
+        NSLog(@"Program validate log:\n%s", log);
+        free(log);
+    }
+    
+    glGetProgramiv(prog, GL_VALIDATE_STATUS, &status);
+    if (status == 0) {
+        return NO;
+    }
     
     return YES;
 }
+
+//---------------------------------------------------------------------------------------
+- (void)dealloc
+{
+    [self tearDownGL];
+    
+    if ([EAGLContext currentContext] == self.eaglContext) {
+        [EAGLContext setCurrentContext:nil];
+    }
+}
+
+//---------------------------------------------------------------------------------------
+- (void)didReceiveMemoryWarning
+{
+    [super didReceiveMemoryWarning];
+    
+    if ([self isViewLoaded] && ([[self view] window] == nil)) {
+        self.view = nil;
+        
+        [self tearDownGL];
+        
+        if ([EAGLContext currentContext] == self.eaglContext) {
+            [EAGLContext setCurrentContext:nil];
+        }
+        self.eaglContext = nil;
+    }
+    
+    // Dispose of any other memory resources here...
+}
+
+
+//---------------------------------------------------------------------------------------
+- (void)tearDownGL
+{
+    [EAGLContext setCurrentContext:self.eaglContext];
+    
+    glDeleteBuffers(1, &_vbo);
+    glDeleteVertexArrays(1, &_vao);
+    
+    if (_shaderProgram) {
+        glDeleteProgram(_shaderProgram);
+        _shaderProgram = 0;
+    }
+}
+
 
 
 @end // end ViewController

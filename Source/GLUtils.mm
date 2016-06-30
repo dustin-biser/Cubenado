@@ -2,4 +2,4 @@
 //  GLUtils.cpp
 //
 
-#include "GLUtils.hpp"
+#include "GLUtils.h"

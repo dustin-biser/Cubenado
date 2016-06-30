@@ -1,5 +1,5 @@
 //
-//  GLUtils.hpp
+//  GLUtils.h
 //
 
 #pragma once
