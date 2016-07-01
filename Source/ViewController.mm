@@ -34,8 +34,6 @@ static const GLuint UniformBindingIndex_LightSource = 1;
 struct Material {
     glm::vec4 Ka;        // Coefficients of ambient reflectivity for each RGB component.
     glm::vec4 Kd;        // Coefficients of diffuse reflectivity for each RGB component.
-    double Ks;           // Coefficient of specular reflectivity, uniform across each RGB component.
-    double shininessFactor;   // Specular shininess factor.
 };
 static const GLuint UniformBindingIndex_Matrial = 2;
 
@@ -323,15 +321,13 @@ typedef GLushort Index;
     
     
     // Convert lightSource position to EyeSpace.
-    glm::vec4 lightPosition = glm::vec4(5.0f, 5.0f, 1.0f, 1.0f);
+    glm::vec4 lightPosition = glm::vec4(-2.0f, 5.0f, 5.0f, 1.0f);
     _lightSource.position = viewMatrix * lightPosition;
     _lightSource.rgbIntensity = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
     
     
     _material.Ka = glm::vec4(1.0f);
     _material.Kd = glm::vec4(0.2f, 0.4f, 8.0f, 0.0f);
-    _material.Ks = 1.0;
-    _material.shininessFactor = 10.0;
     
     //-- Copy uniform block data to uniform buffer
     {
