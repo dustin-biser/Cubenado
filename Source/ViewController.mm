@@ -13,8 +13,10 @@ using std::vector;
 
 #import "GLUtils.h"
 
-static const GLuint VertexAttrib_Position = 0;
-static const GLuint VertexAttrib_Normal = 1;
+
+// Vertex Attribute Location Slots
+const static GLuint ATTRIBUTE_POSITION = 0;
+const static GLuint ATTRIBUTE_NORMAL   = 1;
 
 
 struct Transforms {
@@ -263,18 +265,18 @@ typedef GLushort Index;
     // Enable vertex attribute slots
     {
         glBindVertexArray(_vao);
-        glEnableVertexAttribArray(VertexAttrib_Position);
-        glEnableVertexAttribArray(VertexAttrib_Normal);
+        glEnableVertexAttribArray(ATTRIBUTE_POSITION);
+        glEnableVertexAttribArray(ATTRIBUTE_NORMAL);
     }
 
-    // Bind for use with glVertexAttribPointer(...).
+    // Bind for use with glVertexAttribPointer().
     glBindBuffer(GL_ARRAY_BUFFER, _vbo_cube);
     
     // Position data mapping from VBO to vertex attribute slot
     {
         GLint stride = sizeof(Vertex);
         GLint startOffset(0);
-        glVertexAttribPointer(VertexAttrib_Position, 3, GL_FLOAT, GL_FALSE, stride,
+        glVertexAttribPointer(ATTRIBUTE_POSITION, 3, GL_FLOAT, GL_FALSE, stride,
             reinterpret_cast<const GLvoid *>(startOffset));
     }
     
@@ -282,7 +284,7 @@ typedef GLushort Index;
     {
         GLint stride = sizeof(Vertex);
         GLint startOffset = sizeof(Vertex::position);
-        glVertexAttribPointer(VertexAttrib_Normal, 3, GL_FLOAT, GL_FALSE, stride,
+        glVertexAttribPointer(ATTRIBUTE_NORMAL, 3, GL_FLOAT, GL_FALSE, stride,
             reinterpret_cast<const GLvoid *>(startOffset));
     }
 
@@ -486,14 +488,10 @@ typedef GLushort Index;
     
     // Attach vertex shader to program.
     glAttachShader(_shaderProgram, vertShader);
+    CHECK_GL_ERRORS;
     
     // Attach fragment shader to program.
     glAttachShader(_shaderProgram, fragShader);
-    
-    // Bind attribute locations.
-    // This needs to be done prior to linking.
-    glBindAttribLocation(_shaderProgram, VertexAttrib_Position, "position");
-    glBindAttribLocation(_shaderProgram, VertexAttrib_Normal, "normal");
     CHECK_GL_ERRORS;
     
     // Link program.

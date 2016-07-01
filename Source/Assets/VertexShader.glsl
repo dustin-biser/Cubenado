@@ -2,6 +2,8 @@
 // VertexShader.glsl
 //
 #version 300 es
+#define ATTRIBUTE_POSITION  0
+#define ATTRIBUTE_NORMAL    1
 
 layout(std140)
 uniform Transforms {
@@ -10,8 +12,8 @@ uniform Transforms {
     mat4 normalMatrix;
 };
 
-in vec3 position;
-in vec3 normal;
+layout(location = ATTRIBUTE_POSITION) in vec3 position;
+layout(location = ATTRIBUTE_NORMAL) in vec3 normal;
 
 out VsOutFsIn {
     vec4 position;
