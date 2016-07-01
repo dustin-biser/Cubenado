@@ -22,6 +22,7 @@ struct Transforms {
     glm::mat4 viewMatrix;
     glm::mat4 projectionMatrix;
 };
+static const GLuint UniformBindingIndex_Transforms = 0;
 
 struct Vertex {
     GLfloat position[4];
@@ -48,6 +49,8 @@ typedef GLushort Index;
 - (void) loadVertexArrays;
 
 - (void) loadUniforms;
+
+- (void) setUBOBindings;
 
 @end
 
@@ -86,26 +89,21 @@ typedef GLushort Index;
     _glkView = (GLKView *)self.view;
     _glkView.context = self.eaglContext;
     
-    // Configure renderbuffers created by the GLKView
-    _glkView.drawableColorFormat = GLKViewDrawableColorFormatRGBA8888;
-    _glkView.drawableDepthFormat = GLKViewDrawableDepthFormat24;
-    _glkView.drawableStencilFormat = GLKViewDrawableStencilFormat8;
+    // Configure renderbuffer formats created by the GLKView
+    {
+        // sRGB format for gamma correction
+        _glkView.drawableColorFormat = GLKViewDrawableColorFormatSRGBA8888;
+        
+        // Depth stencil formats
+        _glkView.drawableDepthFormat = GLKViewDrawableDepthFormat24;
+        _glkView.drawableStencilFormat = GLKViewDrawableStencilFormat8;
+    }
     
     
     self.preferredFramesPerSecond = 60;
     
     
     [self setupGL];
-}
-
-
-//---------------------------------------------------------------------------------------
-- (void)viewDidAppear:(BOOL)animated
-{
-    // The GLKView drawable object's framebuffer is not gauranteed to be created until
-    // presentation.  Acquire the framebuffer dimensions here, after apearing.
-    _framebufferWidth = static_cast<GLsizei>(_glkView.drawableWidth);
-    _framebufferHeight = static_cast<GLsizei>(_glkView.drawableHeight);
 }
 
 
@@ -120,10 +118,18 @@ typedef GLushort Index;
 
     [self loadVertexArrays];
     
+    [self setUBOBindings];
+    
     [self loadUniforms];
+    
 
     glClearColor(1, 1, 1, 1);
-
+    glClearDepthf(1.0f);
+    
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_TRUE);
+    glDepthFunc(GL_LEQUAL);
+    glDepthRangef(0.0f, 1.0f);
 }
 
 //---------------------------------------------------------------------------------------
@@ -260,33 +266,49 @@ typedef GLushort Index;
         glm::vec3{0.0f, 1.0f, 0.0f}   // up
     );
     
-    _sceneTransforms.modelMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, -5.0f));
+    float angle = M_PI * 0.25f;
+    glm::mat4 rotMatrix = glm::rotate(glm::mat4(), angle, glm::vec3(1.0f, 1.0f, 0.0f));
+    glm::mat4 transMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, -5.0f));
+    _sceneTransforms.modelMatrix = transMatrix * rotMatrix;
     
+    
+    // Copy uniform _sceneTransforms data into UBO.
+    {
+        glBindBuffer(GL_UNIFORM_BUFFER, _ubo);
+        GLvoid * pMappedBuffer = glMapBufferRange(GL_UNIFORM_BUFFER, 0, sizeof(_sceneTransforms),
+            GL_MAP_WRITE_BIT);
+        memcpy(pMappedBuffer, &_sceneTransforms, sizeof(_sceneTransforms));
+        glUnmapBuffer(GL_UNIFORM_BUFFER);
+        
+        glBindBuffer(GL_UNIFORM_BUFFER, 0);
+    }
+    
+    CHECK_GL_ERRORS;
+}
+
+//---------------------------------------------------------------------------------------
+- (void) setUBOBindings
+{
+    // Set the UBO binding location for 'Transforms'
     GLuint blockIndex = glGetUniformBlockIndex(_shaderProgram, "Transforms");
+    
     // Query uniform block size
     GLint blockSize;
     glGetActiveUniformBlockiv(_shaderProgram, blockIndex, GL_UNIFORM_BLOCK_DATA_SIZE,
-        &blockSize);
+            &blockSize);
     
-    // Bind the block index to specified location
-    GLint bindingLocation = 0;
-    glUniformBlockBinding(_shaderProgram, blockIndex, bindingLocation);
+    // Bind the block index to the Transforms UBO binding index
+    glUniformBlockBinding(_shaderProgram, blockIndex, UniformBindingIndex_Transforms);
     
     // Create Uniform Buffer Object handle
-    glUseProgram(_shaderProgram);
     glGenBuffers(1, &_ubo);
     glBindBuffer(GL_UNIFORM_BUFFER, _ubo);
     glBufferData(GL_UNIFORM_BUFFER, blockSize, nullptr, GL_DYNAMIC_DRAW);
-    
-    // Bind the UBO handle to BindPoint
-    glBindBufferBase(GL_UNIFORM_BUFFER, bindingLocation, _ubo);
-    
-    GLvoid * pMappedBuffer = glMapBufferRange(GL_UNIFORM_BUFFER, 0, sizeof(_sceneTransforms), GL_MAP_WRITE_BIT);
-    memcpy(pMappedBuffer, &_sceneTransforms, sizeof(_sceneTransforms));
-    glUnmapBuffer(GL_UNIFORM_BUFFER);
-    
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
-    glUseProgram(0);
+    
+    // Bind the UBO to uniform binding index for 'Transforms'
+    glBindBufferBase(GL_UNIFORM_BUFFER, UniformBindingIndex_Transforms, _ubo);
+    
     CHECK_GL_ERRORS;
 }
 
@@ -319,7 +341,6 @@ typedef GLushort Index;
     glBindVertexArray(0);
     glUseProgram(0);
     CHECK_GL_ERRORS;
-
 }
 
 
@@ -378,7 +399,6 @@ typedef GLushort Index;
             glDeleteProgram(_shaderProgram);
             _shaderProgram = 0;
         }
-        
         throw;
     }
     
