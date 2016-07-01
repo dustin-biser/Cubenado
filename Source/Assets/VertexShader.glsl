@@ -3,23 +3,30 @@
 //
 #version 300 es
 
+layout(std140)
 uniform Transforms {
-    mat4 modelMatrix;
-    mat4 viewMatrix;
-    mat4 projectionMatrix;
+    mat4 modelViewMatrix;
+    mat4 mvpMatrix;
+    mat4 normalMatrix;
 };
 
 in vec3 position;
 in vec3 normal;
 
 out VsOutFsIn {
-    vec3 position;
-    vec3 normal;
+    vec4 position;
+    vec4 normal;
 } vsOut;
 
-void main() { 
-    gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0f);
+void main() {
+    vec4 pos = vec4(position, 1.0);
+    vec4 n = vec4(normal, 0.0);
     
-    vsOut.position = position;
-    vsOut.normal = normal;
+    // Transform position to EyeSpace.
+    vsOut.position = modelViewMatrix * pos;
+    
+    // Transform normal to EyeSpace.
+    vsOut.normal = normalMatrix * n;
+    
+    gl_Position = mvpMatrix * pos;
 }

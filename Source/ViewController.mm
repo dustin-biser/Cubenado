@@ -18,11 +18,35 @@ static const GLuint VertexAttrib_Normal = 1;
 
 
 struct Transforms {
-    glm::mat4 modelMatrix;
-    glm::mat4 viewMatrix;
-    glm::mat4 projectionMatrix;
+    glm::mat4 modelViewMatrix;
+    glm::mat4 mvpMatrix;
+    glm::mat4 normalMatrix;
 };
 static const GLuint UniformBindingIndex_Transforms = 0;
+
+struct LightSource {
+    glm::vec4 position;      // Light position in eye coordinate space.
+    glm::vec4 rgbIntensity;  // Light intensity for each RGB component.
+};
+static const GLuint UniformBindingIndex_LightSource = 1;
+
+
+struct Material {
+    glm::vec4 Ka;        // Coefficients of ambient reflectivity for each RGB component.
+    glm::vec4 Kd;        // Coefficients of diffuse reflectivity for each RGB component.
+    double Ks;           // Coefficient of specular reflectivity, uniform across each RGB component.
+    double shininessFactor;   // Specular shininess factor.
+};
+static const GLuint UniformBindingIndex_Matrial = 2;
+
+
+// Align value to the next multiple of alignment.
+template <typename T>
+static T align(T value, T alignment)
+{
+    return ((value + (alignment - 1)) & ~(alignment - 1));
+}
+
 
 struct Vertex {
     GLfloat position[4];
@@ -30,6 +54,9 @@ struct Vertex {
 };
 
 typedef GLushort Index;
+
+
+
 
 
 @interface ViewController () {
@@ -68,8 +95,21 @@ typedef GLushort Index;
     GLsizei _framebufferWidth;
     GLsizei _framebufferHeight;
     
-    GLuint _ubo;                // Uniform Buffer Object
+    
+    // Uniform Buffer Data
+    GLuint _ubo;
+    GLuint _uboBufferSize;
     Transforms _sceneTransforms;
+    GLint _uboOffset_Transforms;
+    GLint _unifomBlockSize_Transforms;
+    
+    LightSource _lightSource;
+    GLint _uboOffset_LightSource;
+    GLint _uniformBlockSize_LightSource;
+    
+    Material _material;
+    GLint _uboOffset_Material;
+    GLint _uniformBlockSize_Material;
 }
 
 
@@ -130,6 +170,9 @@ typedef GLushort Index;
     glDepthMask(GL_TRUE);
     glDepthFunc(GL_LEQUAL);
     glDepthRangef(0.0f, 1.0f);
+    
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
 }
 
 //---------------------------------------------------------------------------------------
@@ -258,57 +301,110 @@ typedef GLushort Index;
     float fovy = 45.0f;
     CGSize size = _glkView.bounds.size;
     float aspect = size.width / size.height;
-    _sceneTransforms.projectionMatrix = glm::perspective(glm::radians(fovy), aspect, 0.1f, 100.0f);
+    glm::mat4 projectionMatrix = glm::perspective(glm::radians(fovy), aspect, 0.1f, 100.0f);
     
-    _sceneTransforms.viewMatrix = glm::lookAt (
+    glm::mat4 viewMatrix = glm::lookAt (
         glm::vec3{0.0f, 0.0f, 0.0f},  // eye
         glm::vec3{0.0f, 0.0f, -1.0f}, // center
         glm::vec3{0.0f, 1.0f, 0.0f}   // up
     );
     
     float angle = M_PI * 0.25f;
-    glm::mat4 rotMatrix = glm::rotate(glm::mat4(), angle, glm::vec3(1.0f, 1.0f, 0.0f));
+    glm::mat4 rotMatrix = glm::rotate(glm::mat4(), angle, glm::vec3(1.0f, 1.0f, 1.0f));
     glm::mat4 transMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, -5.0f));
-    _sceneTransforms.modelMatrix = transMatrix * rotMatrix;
+    glm::mat4 modelMatrix = transMatrix * rotMatrix;
+    
+    glm::mat4 modelViewMatrix = viewMatrix * modelMatrix;
+    _sceneTransforms.modelViewMatrix = modelViewMatrix;
+    _sceneTransforms.mvpMatrix = projectionMatrix * modelViewMatrix;
+    _sceneTransforms.normalMatrix = glm::inverse(glm::transpose(modelViewMatrix));
     
     
-    // Copy uniform _sceneTransforms data into UBO.
+    // Convert lightSource position to EyeSpace.
+    _lightSource.position = glm::vec4(5.0f, 5.0f, 1.0f, 1.0f);
+    _lightSource.position = viewMatrix * _lightSource.position;
+    
+    _lightSource.rgbIntensity = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
+    
+    
+    _material.Ka = glm::vec4(1.0f);
+    _material.Kd = glm::vec4(0.2f, 0.4f, 8.0f, 0.0f);
+    _material.Ks = 1.0;
+    _material.shininessFactor = 10.0;
+    
+    //-- Copy uniform block data to uniform buffer
     {
         glBindBuffer(GL_UNIFORM_BUFFER, _ubo);
-        GLvoid * pMappedBuffer = glMapBufferRange(GL_UNIFORM_BUFFER, 0, sizeof(_sceneTransforms),
-            GL_MAP_WRITE_BIT);
-        memcpy(pMappedBuffer, &_sceneTransforms, sizeof(_sceneTransforms));
-        glUnmapBuffer(GL_UNIFORM_BUFFER);
+        GLvoid * pUniformBuffer = glMapBufferRange(GL_UNIFORM_BUFFER, 0, _uboBufferSize,
+                                                   GL_MAP_WRITE_BIT);
+        // Copy Transform data to uniform buffer.
+        memcpy((char *)pUniformBuffer + _uboOffset_Transforms,
+               &_sceneTransforms, sizeof(_sceneTransforms));
         
+        // Copy LightSource data to uniform buffer.
+        memcpy((char *)pUniformBuffer + _uboOffset_LightSource,
+               &_lightSource, sizeof(_lightSource));
+        
+        // Copy Material data to uniform buffer.
+        memcpy((char *)pUniformBuffer + _uboOffset_Material,
+               &_material, sizeof(_material));
+        
+        glUnmapBuffer(GL_UNIFORM_BUFFER);
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
+        CHECK_GL_ERRORS;
     }
-    
-    CHECK_GL_ERRORS;
 }
 
 //---------------------------------------------------------------------------------------
 - (void) setUBOBindings
 {
-    // Set the UBO binding location for 'Transforms'
-    GLuint blockIndex = glGetUniformBlockIndex(_shaderProgram, "Transforms");
+    // Query uniform block indices
+    GLuint blockIndex0 = glGetUniformBlockIndex(_shaderProgram, "Transforms");
+    GLuint blockIndex1 = glGetUniformBlockIndex(_shaderProgram, "LightSource");
+    GLuint blockIndex2 = glGetUniformBlockIndex(_shaderProgram, "Material");
     
     // Query uniform block size
-    GLint blockSize;
-    glGetActiveUniformBlockiv(_shaderProgram, blockIndex, GL_UNIFORM_BLOCK_DATA_SIZE,
-            &blockSize);
+    glGetActiveUniformBlockiv(_shaderProgram, blockIndex0, GL_UNIFORM_BLOCK_DATA_SIZE,
+            &_unifomBlockSize_Transforms);
+    glGetActiveUniformBlockiv(_shaderProgram, blockIndex1, GL_UNIFORM_BLOCK_DATA_SIZE,
+            &_uniformBlockSize_LightSource);
+    glGetActiveUniformBlockiv(_shaderProgram, blockIndex2, GL_UNIFORM_BLOCK_DATA_SIZE,
+            &_uniformBlockSize_Material);
     
-    // Bind the block index to the Transforms UBO binding index
-    glUniformBlockBinding(_shaderProgram, blockIndex, UniformBindingIndex_Transforms);
     
-    // Create Uniform Buffer Object handle
+    // Bind shader block index to uniform buffer binding index
+    glUniformBlockBinding(_shaderProgram, blockIndex0, UniformBindingIndex_Transforms);
+    glUniformBlockBinding(_shaderProgram, blockIndex1, UniformBindingIndex_LightSource);
+    glUniformBlockBinding(_shaderProgram, blockIndex2, UniformBindingIndex_Matrial);
+    
+    GLint uboOffsetAlignment;
+    glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uboOffsetAlignment);
+    
+    // Create Uniform Buffer
     glGenBuffers(1, &_ubo);
     glBindBuffer(GL_UNIFORM_BUFFER, _ubo);
-    glBufferData(GL_UNIFORM_BUFFER, blockSize, nullptr, GL_DYNAMIC_DRAW);
+    _uboBufferSize =  align(_unifomBlockSize_Transforms, uboOffsetAlignment) +
+                      align(_uniformBlockSize_LightSource, uboOffsetAlignment) +
+                      align(_uniformBlockSize_Material, uboOffsetAlignment);
+    glBufferData(GL_UNIFORM_BUFFER, _uboBufferSize, nullptr, GL_DYNAMIC_DRAW);
+    
+    // Map range of uniform buffer to uniform buffer binding index
+    GLint offSet = 0;
+    _uboOffset_Transforms = offSet;
+    glBindBufferRange(GL_UNIFORM_BUFFER, UniformBindingIndex_Transforms, _ubo,
+                      _uboOffset_Transforms, _unifomBlockSize_Transforms);
+    offSet += _unifomBlockSize_Transforms;
+    offSet = align(offSet, uboOffsetAlignment);
+    _uboOffset_LightSource = offSet;
+    glBindBufferRange(GL_UNIFORM_BUFFER, UniformBindingIndex_LightSource, _ubo,
+                      _uboOffset_LightSource, _uniformBlockSize_LightSource);
+    offSet += _uniformBlockSize_LightSource;
+    offSet = align(offSet, uboOffsetAlignment);
+    _uboOffset_Material = offSet;
+    glBindBufferRange(GL_UNIFORM_BUFFER, UniformBindingIndex_Matrial, _ubo,
+                      _uboOffset_Material, _uniformBlockSize_Material);
+    
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
-    
-    // Bind the UBO to uniform binding index for 'Transforms'
-    glBindBufferBase(GL_UNIFORM_BUFFER, UniformBindingIndex_Transforms, _ubo);
-    
     CHECK_GL_ERRORS;
 }
 
