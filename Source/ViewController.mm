@@ -49,8 +49,8 @@ static T align(T value, T alignment)
 
 
 struct Vertex {
-    GLfloat position[4];
-    GLfloat normal[4];
+    GLfloat position[3];
+    GLfloat normal[3];
 };
 
 typedef GLushort Index;
@@ -163,7 +163,7 @@ typedef GLushort Index;
     [self loadUniforms];
     
 
-    glClearColor(1, 1, 1, 1);
+    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glClearDepthf(1.0f);
     
     glEnable(GL_DEPTH_TEST);
@@ -313,17 +313,18 @@ typedef GLushort Index;
     glm::mat4 rotMatrix = glm::rotate(glm::mat4(), angle, glm::vec3(1.0f, 1.0f, 1.0f));
     glm::mat4 transMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, -5.0f));
     glm::mat4 modelMatrix = transMatrix * rotMatrix;
-    
     glm::mat4 modelViewMatrix = viewMatrix * modelMatrix;
     _sceneTransforms.modelViewMatrix = modelViewMatrix;
     _sceneTransforms.mvpMatrix = projectionMatrix * modelViewMatrix;
-    _sceneTransforms.normalMatrix = glm::inverse(glm::transpose(modelViewMatrix));
+    
+    // modelViewMatrix scale is uniform, so
+    // inverse = transpose -> normalMatrix = modelViewMatrix
+    _sceneTransforms.normalMatrix = glm::mat3(modelViewMatrix);
     
     
     // Convert lightSource position to EyeSpace.
-    _lightSource.position = glm::vec4(5.0f, 5.0f, 1.0f, 1.0f);
-    _lightSource.position = viewMatrix * _lightSource.position;
-    
+    glm::vec4 lightPosition = glm::vec4(5.0f, 5.0f, 1.0f, 1.0f);
+    _lightSource.position = viewMatrix * lightPosition;
     _lightSource.rgbIntensity = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
     
     
@@ -385,7 +386,7 @@ typedef GLushort Index;
     glBindBuffer(GL_UNIFORM_BUFFER, _ubo);
     _uboBufferSize =  align(_unifomBlockSize_Transforms, uboOffsetAlignment) +
                       align(_uniformBlockSize_LightSource, uboOffsetAlignment) +
-                      align(_uniformBlockSize_Material, uboOffsetAlignment);
+                      _uniformBlockSize_Material;
     glBufferData(GL_UNIFORM_BUFFER, _uboBufferSize, nullptr, GL_DYNAMIC_DRAW);
     
     // Map range of uniform buffer to uniform buffer binding index
@@ -412,6 +413,25 @@ typedef GLushort Index;
 - (void) update
 {
     // Update per frame constants here.
+    
+    glBindBuffer(GL_UNIFORM_BUFFER, _ubo);
+    GLvoid * pUniformBuffer = glMapBufferRange(GL_UNIFORM_BUFFER, 0, _uboBufferSize,
+                                               GL_MAP_WRITE_BIT);
+    // Copy Transform data to uniform buffer.
+    memcpy((char *)pUniformBuffer + _uboOffset_Transforms,
+           &_sceneTransforms, sizeof(_sceneTransforms));
+    
+    // Copy LightSource data to uniform buffer.
+    memcpy((char *)pUniformBuffer + _uboOffset_LightSource,
+           &_lightSource, sizeof(_lightSource));
+    
+    // Copy Material data to uniform buffer.
+    memcpy((char *)pUniformBuffer + _uboOffset_Material,
+           &_material, sizeof(_material));
+    
+    glUnmapBuffer(GL_UNIFORM_BUFFER);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+    CHECK_GL_ERRORS;
 }
 
 
@@ -424,11 +444,11 @@ typedef GLushort Index;
     glViewport(0, 0, width, height);
     
     // Clear the framebuffer
-    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
     glUseProgram(_shaderProgram);
     glBindVertexArray(_vao);
+    glBindBuffer(GL_UNIFORM_BUFFER, _ubo);
 
     VALIDATE_GL_PROGRAM(_shaderProgram);
     
@@ -436,6 +456,7 @@ typedef GLushort Index;
 
     glBindVertexArray(0);
     glUseProgram(0);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
     CHECK_GL_ERRORS;
 }
 
