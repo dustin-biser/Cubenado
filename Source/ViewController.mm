@@ -8,12 +8,20 @@
 using std::vector;
 
 #import <glm/glm.hpp>
+#import <glm/gtc/matrix_transform.hpp>
+#import <glm/gtc/matrix_transform.hpp>
 
 #import "GLUtils.h"
 
 static const GLuint VertexAttrib_Position = 0;
 static const GLuint VertexAttrib_Normal = 1;
 
+
+struct Transforms {
+    glm::mat4 modelMatrix;
+    glm::mat4 viewMatrix;
+    glm::mat4 projectionMatrix;
+};
 
 struct Vertex {
     GLfloat position[4];
@@ -31,13 +39,15 @@ typedef GLushort Index;
 
 - (void) setupGL;
 
-- (void)tearDownGL;
+- (void) tearDownGL;
 
-- (void)loadShaders;
+- (void) loadShaders;
 
 - (void) loadVertexBuffers;
 
 - (void) loadVertexArrays;
+
+- (void) loadUniforms;
 
 @end
 
@@ -46,10 +56,17 @@ typedef GLushort Index;
     GLKView * _glkView;
 
     GLuint _shaderProgram;
-    GLuint _vao;
-    GLuint _vbo_cube;
-    GLuint _indexBuffer_cube;
+    GLuint _vao;                // Vertex Array Object
+    GLuint _vbo_cube;           // Vertex Buffer
+    GLuint _indexBuffer_cube;   // Index Buffer
     GLsizei _numCubeIndices;
+    
+    
+    GLsizei _framebufferWidth;
+    GLsizei _framebufferHeight;
+    
+    GLuint _ubo;                // Uniform Buffer Object
+    Transforms _sceneTransforms;
 }
 
 
@@ -83,6 +100,16 @@ typedef GLushort Index;
 
 
 //---------------------------------------------------------------------------------------
+- (void)viewDidAppear:(BOOL)animated
+{
+    // The GLKView drawable object's framebuffer is not gauranteed to be created until
+    // presentation.  Acquire the framebuffer dimensions here, after apearing.
+    _framebufferWidth = static_cast<GLsizei>(_glkView.drawableWidth);
+    _framebufferHeight = static_cast<GLsizei>(_glkView.drawableHeight);
+}
+
+
+//---------------------------------------------------------------------------------------
 - (void) setupGL
 {
     [EAGLContext setCurrentContext:self.eaglContext];
@@ -92,6 +119,8 @@ typedef GLushort Index;
     [self loadVertexBuffers];
 
     [self loadVertexArrays];
+    
+    [self loadUniforms];
 
     glClearColor(1, 1, 1, 1);
 
@@ -217,6 +246,49 @@ typedef GLushort Index;
     CHECK_GL_ERRORS;
 }
 
+//---------------------------------------------------------------------------------------
+- (void) loadUniforms
+{
+    float fovy = 45.0f;
+    CGSize size = _glkView.bounds.size;
+    float aspect = size.width / size.height;
+    _sceneTransforms.projectionMatrix = glm::perspective(glm::radians(fovy), aspect, 0.1f, 100.0f);
+    
+    _sceneTransforms.viewMatrix = glm::lookAt (
+        glm::vec3{0.0f, 0.0f, 0.0f},  // eye
+        glm::vec3{0.0f, 0.0f, -1.0f}, // center
+        glm::vec3{0.0f, 1.0f, 0.0f}   // up
+    );
+    
+    _sceneTransforms.modelMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, -5.0f));
+    
+    GLuint blockIndex = glGetUniformBlockIndex(_shaderProgram, "Transforms");
+    // Query uniform block size
+    GLint blockSize;
+    glGetActiveUniformBlockiv(_shaderProgram, blockIndex, GL_UNIFORM_BLOCK_DATA_SIZE,
+        &blockSize);
+    
+    // Bind the block index to specified location
+    GLint bindingLocation = 0;
+    glUniformBlockBinding(_shaderProgram, blockIndex, bindingLocation);
+    
+    // Create Uniform Buffer Object handle
+    glUseProgram(_shaderProgram);
+    glGenBuffers(1, &_ubo);
+    glBindBuffer(GL_UNIFORM_BUFFER, _ubo);
+    glBufferData(GL_UNIFORM_BUFFER, blockSize, nullptr, GL_DYNAMIC_DRAW);
+    
+    // Bind the UBO handle to BindPoint
+    glBindBufferBase(GL_UNIFORM_BUFFER, bindingLocation, _ubo);
+    
+    GLvoid * pMappedBuffer = glMapBufferRange(GL_UNIFORM_BUFFER, 0, sizeof(_sceneTransforms), GL_MAP_WRITE_BIT);
+    memcpy(pMappedBuffer, &_sceneTransforms, sizeof(_sceneTransforms));
+    glUnmapBuffer(GL_UNIFORM_BUFFER);
+    
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+    glUseProgram(0);
+    CHECK_GL_ERRORS;
+}
 
 //---------------------------------------------------------------------------------------
 - (void) update
@@ -226,6 +298,7 @@ typedef GLushort Index;
 
 
 //---------------------------------------------------------------------------------------
+// View has requested a refresh, so draw next frame here
 - (void)glkView:(GLKView *)view drawInRect:(CGRect)rect
 {
     GLint width = static_cast<GLint>(_glkView.drawableWidth);

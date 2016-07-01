@@ -1,10 +1,14 @@
 #version 300 es
 
-precision mediump float;
+uniform Transforms {
+    mat4 modelMatrix;
+    mat4 viewMatrix;
+    mat4 projectionMatrix;
+};
 
 in vec3 position;
 in vec3 normal;
 
 void main() { 
-    gl_Position = vec4(position, 1.0f);
-} 
+    gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0f);
+}
