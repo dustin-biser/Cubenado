@@ -27,13 +27,15 @@ public:
 
     void disable() const;
 
-    void recompileShaders();
-
-    GLuint getProgramObject() const;
+    GLuint programObject() const;
     
     GLint getUniformLocation(const char * uniformName) const;
     
     GLint getAttribLocation(const char * attributeName) const;
+    
+    // Support conversion to GLuint for use with GL functions.
+    // Returns programObject.
+    operator GLuint () const;
     
 private:
     ShaderProgramImpl * impl;

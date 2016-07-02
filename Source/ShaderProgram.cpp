@@ -48,7 +48,7 @@ private:
     
     void extractSourceCode(std::string & shaderSource, const char * filePath);
     
-    void deleteShaders();
+    void releaseShaderObjects();
     
     void link();
 
@@ -61,11 +61,14 @@ ShaderProgramImpl::ShaderProgramImpl()
     
 }
 
+
 //------------------------------------------------------------------------------------
 ShaderProgram::ShaderProgram()
 {
     impl = new ShaderProgramImpl();
 }
+
+
 //------------------------------------------------------------------------------------
 void ShaderProgram::generateProgramObject() {
     auto & programObject = impl->programObject;
@@ -74,10 +77,12 @@ void ShaderProgram::generateProgramObject() {
     }
 }
 
+
 //------------------------------------------------------------------------------------
 void ShaderProgram::attachVertexShader(const char * filePath) {
     impl->attachShader(filePath, GL_VERTEX_SHADER);
 }
+
 
 //------------------------------------------------------------------------------------
 void ShaderProgram::attachFragmentShader (
@@ -85,6 +90,7 @@ void ShaderProgram::attachFragmentShader (
 ) {
     impl->attachShader(filePath, GL_FRAGMENT_SHADER);
 }
+
 
 //------------------------------------------------------------------------------------
 void ShaderProgramImpl::attachShader (
@@ -100,6 +106,7 @@ void ShaderProgramImpl::attachShader (
     extractSourceCode(shaderSourceCode, filePath);
     compileShader(shaderObject, shaderSourceCode);
 }
+
 
 //------------------------------------------------------------------------------------
 void ShaderProgramImpl::extractSourceCode (
@@ -123,17 +130,20 @@ void ShaderProgramImpl::extractSourceCode (
         strBuffer << str;
     }
     file.close();
-
-    strBuffer << '\0';  // Append null terminator.
+    
+    // Append null terminator.
+    strBuffer << '\0';
 
     shaderSource = strBuffer.str();
 }
+
 
 //------------------------------------------------------------------------------------
 void ShaderProgram::link()
 {
     impl->link();
 }
+
 
 //------------------------------------------------------------------------------------
 void ShaderProgramImpl::link()
@@ -145,9 +155,10 @@ void ShaderProgramImpl::link()
     glLinkProgram(programObject);
     
     checkLinkStatus();
-    deleteShaders();
+    releaseShaderObjects();
     CHECK_GL_ERRORS;
 }
+
 
 //------------------------------------------------------------------------------------
 ShaderProgram::~ShaderProgram()
@@ -156,18 +167,22 @@ ShaderProgram::~ShaderProgram()
     impl = nullptr;
 }
 
+
 //------------------------------------------------------------------------------------
 ShaderProgramImpl::~ShaderProgramImpl()
 {
     glDeleteProgram(programObject);
 }
 
+
 //------------------------------------------------------------------------------------
-void ShaderProgramImpl::deleteShaders() {
+void ShaderProgramImpl::releaseShaderObjects() {
     for(auto shaderObject : shaderObjects) {
+        glDetachShader(programObject, shaderObject);
         glDeleteShader(shaderObject);
     }
 }
+
 
 //------------------------------------------------------------------------------------
 void ShaderProgramImpl::compileShader (
@@ -182,6 +197,7 @@ void ShaderProgramImpl::compileShader (
     
     CHECK_GL_ERRORS;
 }
+
 
 //------------------------------------------------------------------------------------
 void ShaderProgramImpl::checkCompilationStatus (
@@ -206,17 +222,20 @@ void ShaderProgramImpl::checkCompilationStatus (
     }
 }
 
+
 //------------------------------------------------------------------------------------
 void ShaderProgram::enable() const {
     glUseProgram(impl->programObject);
     CHECK_GL_ERRORS;
 }
 
+
 //------------------------------------------------------------------------------------
 void ShaderProgram::disable() const {
     glUseProgram((GLuint)NULL);
     CHECK_GL_ERRORS;
 }
+
 
 //------------------------------------------------------------------------------------
 void ShaderProgramImpl::checkLinkStatus()
@@ -239,11 +258,13 @@ void ShaderProgramImpl::checkLinkStatus()
     }
 }
 
+
 //------------------------------------------------------------------------------------
-GLuint ShaderProgram::getProgramObject() const
+GLuint ShaderProgram::programObject() const
 {
     return impl->programObject;
 }
+
 
 //------------------------------------------------------------------------------------
 GLint ShaderProgram::getUniformLocation (
@@ -263,6 +284,7 @@ GLint ShaderProgram::getUniformLocation (
     return result;
 }
 
+
 //------------------------------------------------------------------------------------
 GLint ShaderProgram::getAttribLocation (
     const char * attributeName
@@ -279,4 +301,11 @@ GLint ShaderProgram::getAttribLocation (
 #endif
 
     return result;
+}
+
+
+//------------------------------------------------------------------------------------
+ShaderProgram::operator GLuint () const
+{
+    return impl->programObject;
 }

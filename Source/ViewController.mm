@@ -11,7 +11,7 @@ using std::vector;
 #import <glm/gtc/matrix_transform.hpp>
 #import <glm/gtc/matrix_transform.hpp>
 
-#import "GLUtils.h"
+#import "ShaderProgram.hpp"
 
 
 // Vertex Attribute Location Slots
@@ -85,7 +85,9 @@ typedef GLushort Index;
 @private
     GLKView * _glkView;
 
-    GLuint _shaderProgram;
+    ShaderProgram _shaderProgram_Cube;
+    
+    GLuint _shaderProgram_TFUpdatePosition;
     GLuint _vao;                // Vertex Array Object
     GLuint _vbo_cube;           // Vertex Buffer
     GLuint _indexBuffer_cube;   // Index Buffer
@@ -354,27 +356,28 @@ typedef GLushort Index;
     }
 }
 
+
 //---------------------------------------------------------------------------------------
 - (void) setUBOBindings
 {
     // Query uniform block indices
-    GLuint blockIndex0 = glGetUniformBlockIndex(_shaderProgram, "Transforms");
-    GLuint blockIndex1 = glGetUniformBlockIndex(_shaderProgram, "LightSource");
-    GLuint blockIndex2 = glGetUniformBlockIndex(_shaderProgram, "Material");
+    GLuint blockIndex0 = glGetUniformBlockIndex(_shaderProgram_Cube, "Transforms");
+    GLuint blockIndex1 = glGetUniformBlockIndex(_shaderProgram_Cube, "LightSource");
+    GLuint blockIndex2 = glGetUniformBlockIndex(_shaderProgram_Cube, "Material");
     
     // Query uniform block size
-    glGetActiveUniformBlockiv(_shaderProgram, blockIndex0, GL_UNIFORM_BLOCK_DATA_SIZE,
+    glGetActiveUniformBlockiv(_shaderProgram_Cube, blockIndex0, GL_UNIFORM_BLOCK_DATA_SIZE,
             &_unifomBlockSize_Transforms);
-    glGetActiveUniformBlockiv(_shaderProgram, blockIndex1, GL_UNIFORM_BLOCK_DATA_SIZE,
+    glGetActiveUniformBlockiv(_shaderProgram_Cube, blockIndex1, GL_UNIFORM_BLOCK_DATA_SIZE,
             &_uniformBlockSize_LightSource);
-    glGetActiveUniformBlockiv(_shaderProgram, blockIndex2, GL_UNIFORM_BLOCK_DATA_SIZE,
+    glGetActiveUniformBlockiv(_shaderProgram_Cube, blockIndex2, GL_UNIFORM_BLOCK_DATA_SIZE,
             &_uniformBlockSize_Material);
     
     
     // Bind shader block index to uniform buffer binding index
-    glUniformBlockBinding(_shaderProgram, blockIndex0, UniformBindingIndex_Transforms);
-    glUniformBlockBinding(_shaderProgram, blockIndex1, UniformBindingIndex_LightSource);
-    glUniformBlockBinding(_shaderProgram, blockIndex2, UniformBindingIndex_Matrial);
+    glUniformBlockBinding(_shaderProgram_Cube, blockIndex0, UniformBindingIndex_Transforms);
+    glUniformBlockBinding(_shaderProgram_Cube, blockIndex1, UniformBindingIndex_LightSource);
+    glUniformBlockBinding(_shaderProgram_Cube, blockIndex2, UniformBindingIndex_Matrial);
     
     GLint uboOffsetAlignment;
     glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uboOffsetAlignment);
@@ -444,12 +447,10 @@ typedef GLushort Index;
     // Clear the framebuffer
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
-    glUseProgram(_shaderProgram);
+    _shaderProgram_Cube.enable();
     glBindVertexArray(_vao);
     glBindBuffer(GL_UNIFORM_BUFFER, _ubo);
 
-    VALIDATE_GL_PROGRAM(_shaderProgram);
-    
     glDrawElements(GL_TRIANGLES, _numCubeIndices, GL_UNSIGNED_SHORT, nullptr);
 
     glBindVertexArray(0);
@@ -462,68 +463,16 @@ typedef GLushort Index;
 //---------------------------------------------------------------------------------------
 - (void)loadShaders
 {
-    GLuint vertShader, fragShader;
-    NSString *vertShaderPathname, *fragShaderPathname;
+    _shaderProgram_Cube.generateProgramObject();
     
-    // Create shader program.
-    _shaderProgram = glCreateProgram();
-    if(_shaderProgram == 0) {
-        NSLog(@"Failed to create shader program.");
-        throw;
-    }
+    NSString * vsPathString = [[NSBundle mainBundle] pathForResource:@"VertexShader" ofType:@"glsl"];
+    const char * vsfilePath = [vsPathString UTF8String];
+    NSString * fsPathString = [[NSBundle mainBundle] pathForResource:@"FragmentShader" ofType:@"glsl"];
+    const char * fsfilePath = [fsPathString UTF8String];
     
-    // Create and compile vertex shader.
-    vertShaderPathname = [[NSBundle mainBundle] pathForResource:@"VertexShader" ofType:@"glsl"];
-    if (![GLUtils compileShader:&vertShader type:GL_VERTEX_SHADER file:vertShaderPathname]) {
-        NSLog(@"Failed to compile vertex shader");
-        throw;
-    }
-    
-    // Create and compile fragment shader.
-    fragShaderPathname = [[NSBundle mainBundle] pathForResource:@"FragmentShader" ofType:@"glsl"];
-    if (![GLUtils compileShader:&fragShader type:GL_FRAGMENT_SHADER file:fragShaderPathname]) {
-        NSLog(@"Failed to compile fragment shader");
-        throw;
-    }
-    
-    // Attach vertex shader to program.
-    glAttachShader(_shaderProgram, vertShader);
-    CHECK_GL_ERRORS;
-    
-    // Attach fragment shader to program.
-    glAttachShader(_shaderProgram, fragShader);
-    CHECK_GL_ERRORS;
-    
-    // Link program.
-    if (![GLUtils linkProgram:_shaderProgram]) {
-        NSLog(@"Failed to link program: %d", _shaderProgram);
-        
-        if (vertShader) {
-            glDeleteShader(vertShader);
-            vertShader = 0;
-        }
-        if (fragShader) {
-            glDeleteShader(fragShader);
-            fragShader = 0;
-        }
-        if (_shaderProgram) {
-            glDeleteProgram(_shaderProgram);
-            _shaderProgram = 0;
-        }
-        throw;
-    }
-    
-    // Release vertex and fragment shaders.
-    if (vertShader) {
-        glDetachShader(_shaderProgram, vertShader);
-        glDeleteShader(vertShader);
-    }
-    if (fragShader) {
-        glDetachShader(_shaderProgram, fragShader);
-        glDeleteShader(fragShader);
-    }
-    
-    CHECK_GL_ERRORS;
+    _shaderProgram_Cube.attachVertexShader(vsfilePath);
+    _shaderProgram_Cube.attachFragmentShader(fsfilePath);
+    _shaderProgram_Cube.link();
 }
 
 
@@ -565,10 +514,6 @@ typedef GLushort Index;
     glDeleteBuffers(1, &_vbo_cube);
     glDeleteVertexArrays(1, &_vao);
     
-    if (_shaderProgram) {
-        glDeleteProgram(_shaderProgram);
-        _shaderProgram = 0;
-    }
 }
 
 
