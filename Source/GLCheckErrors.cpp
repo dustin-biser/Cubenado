@@ -1,18 +1,20 @@
 //
 //  GLCheckErrors.cpp
 //
-
 #import "GlCheckErrors.h"
 
 #include <string>
+using std::string;
+
 #include <sstream>
 using std::stringstream;
 
 #include <iostream>
+using std::cout;
 using std::endl;
 
 
-
+//---------------------------------------------------------------------------------------
 const char * getErrorString (
     GLenum errorCode
 ) {
@@ -90,8 +92,7 @@ void checkGLErrors (
     } while (errorCode != GL_NO_ERROR);
     
     if (errorFound) {
-        NSString * errorString = [NSString stringWithUTF8String: errorMessage.str().c_str()];
-        NSLog(@"%@", errorString);
+        cout << errorMessage.str() << endl;
         throw;
     }
 }

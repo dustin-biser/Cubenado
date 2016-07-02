@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0C233CD71D2754FC00977B5F /* TFUpdatePosition.glsl in Resources */ = {isa = PBXBuildFile; fileRef = 0C233CD61D2754FC00977B5F /* TFUpdatePosition.glsl */; };
+		0C233CDF1D275E8200977B5F /* ShaderProgram.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0C233CDD1D275E8200977B5F /* ShaderProgram.cpp */; };
 		0C7B17931D24DE8C00D3E9E4 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0C7B17921D24DE8C00D3E9E4 /* UIKit.framework */; };
 		0C7B17951D24DEA900D3E9E4 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0C7B17941D24DEA900D3E9E4 /* Foundation.framework */; };
 		0C7B17981D2575D700D3E9E4 /* GLUtils.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0C7B17961D2575D700D3E9E4 /* GLUtils.mm */; };
@@ -14,7 +16,7 @@
 		0CE3D2B71D248EEB00FFB2B5 /* VertexShader.glsl in Resources */ = {isa = PBXBuildFile; fileRef = 0CE3D2B51D248EEB00FFB2B5 /* VertexShader.glsl */; };
 		0CE3D2B91D24C83E00FFB2B5 /* OpenGLES.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0CE3D2B81D24C83E00FFB2B5 /* OpenGLES.framework */; };
 		0CE3D2BD1D24C87500FFB2B5 /* GLKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0CE3D2BC1D24C87500FFB2B5 /* GLKit.framework */; };
-		0CE3D2C11D24DAE400FFB2B5 /* GLCheckErrors.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0CE3D2C01D24DAE400FFB2B5 /* GLCheckErrors.mm */; };
+		0CE3D2C11D24DAE400FFB2B5 /* GLCheckErrors.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0CE3D2C01D24DAE400FFB2B5 /* GLCheckErrors.cpp */; };
 		0CEB67131D247C9700A69E9A /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0CEB67091D247C9700A69E9A /* AppDelegate.mm */; };
 		0CEB67181D247C9700A69E9A /* main.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0CEB67101D247C9700A69E9A /* main.mm */; };
 		0CEB67191D247C9700A69E9A /* ViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0CEB67121D247C9700A69E9A /* ViewController.mm */; };
@@ -23,6 +25,10 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0C233CD61D2754FC00977B5F /* TFUpdatePosition.glsl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = TFUpdatePosition.glsl; sourceTree = "<group>"; };
+		0C233CD81D275B0700977B5F /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = Source/Data/Info.plist; sourceTree = SOURCE_ROOT; };
+		0C233CDD1D275E8200977B5F /* ShaderProgram.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ShaderProgram.cpp; sourceTree = "<group>"; };
+		0C233CDE1D275E8200977B5F /* ShaderProgram.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = ShaderProgram.hpp; sourceTree = "<group>"; };
 		0C7B17921D24DE8C00D3E9E4 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		0C7B17941D24DEA900D3E9E4 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		0C7B17961D2575D700D3E9E4 /* GLUtils.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = GLUtils.mm; sourceTree = "<group>"; };
@@ -32,7 +38,7 @@
 		0CE3D2B81D24C83E00FFB2B5 /* OpenGLES.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGLES.framework; path = System/Library/Frameworks/OpenGLES.framework; sourceTree = SDKROOT; };
 		0CE3D2BC1D24C87500FFB2B5 /* GLKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GLKit.framework; path = System/Library/Frameworks/GLKit.framework; sourceTree = SDKROOT; };
 		0CE3D2BF1D24DA1300FFB2B5 /* GLCheckErrors.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GLCheckErrors.h; sourceTree = "<group>"; };
-		0CE3D2C01D24DAE400FFB2B5 /* GLCheckErrors.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = GLCheckErrors.mm; sourceTree = "<group>"; };
+		0CE3D2C01D24DAE400FFB2B5 /* GLCheckErrors.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GLCheckErrors.cpp; sourceTree = "<group>"; };
 		0CEB66ED1D24791700A69E9A /* Cubenado.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Cubenado.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0CEB67081D247C9700A69E9A /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		0CEB67091D247C9700A69E9A /* AppDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = AppDelegate.mm; sourceTree = "<group>"; };
@@ -42,7 +48,6 @@
 		0CEB671D1D247DFA00A69E9A /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		0CEB67401D24896700A69E9A /* pch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pch.h; sourceTree = "<group>"; };
 		EF66919483DFD333488B5EE4 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = Source/Assets.xcassets; sourceTree = SOURCE_ROOT; };
-		EF6699CC26DCB5D718ED671F /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.info; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -65,6 +70,7 @@
 			children = (
 				0CE3D2B41D248EEB00FFB2B5 /* FragmentShader.glsl */,
 				0CE3D2B51D248EEB00FFB2B5 /* VertexShader.glsl */,
+				0C233CD61D2754FC00977B5F /* TFUpdatePosition.glsl */,
 			);
 			path = Assets;
 			sourceTree = "<group>";
@@ -94,17 +100,19 @@
 			children = (
 				0CE3D2B31D248EEB00FFB2B5 /* Assets */,
 				EF669BF67A671F39F5FE02FB /* Data */,
-				0CEB67401D24896700A69E9A /* pch.h */,
-				0CEB671D1D247DFA00A69E9A /* LaunchScreen.storyboard */,
 				0CEB67081D247C9700A69E9A /* AppDelegate.h */,
 				0CEB67091D247C9700A69E9A /* AppDelegate.mm */,
+				0CE3D2C01D24DAE400FFB2B5 /* GLCheckErrors.cpp */,
+				0CE3D2BF1D24DA1300FFB2B5 /* GLCheckErrors.h */,
+				0C7B17971D2575D700D3E9E4 /* GLUtils.h */,
+				0C7B17961D2575D700D3E9E4 /* GLUtils.mm */,
+				0CEB671D1D247DFA00A69E9A /* LaunchScreen.storyboard */,
 				0CEB67101D247C9700A69E9A /* main.mm */,
+				0CEB67401D24896700A69E9A /* pch.h */,
+				0C233CDD1D275E8200977B5F /* ShaderProgram.cpp */,
+				0C233CDE1D275E8200977B5F /* ShaderProgram.hpp */,
 				0CEB67111D247C9700A69E9A /* ViewController.h */,
 				0CEB67121D247C9700A69E9A /* ViewController.mm */,
-				0CE3D2BF1D24DA1300FFB2B5 /* GLCheckErrors.h */,
-				0CE3D2C01D24DAE400FFB2B5 /* GLCheckErrors.mm */,
-				0C7B17961D2575D700D3E9E4 /* GLUtils.mm */,
-				0C7B17971D2575D700D3E9E4 /* GLUtils.h */,
 			);
 			path = Source;
 			sourceTree = "<group>";
@@ -112,7 +120,7 @@
 		EF669BF67A671F39F5FE02FB /* Data */ = {
 			isa = PBXGroup;
 			children = (
-				EF6699CC26DCB5D718ED671F /* Info.plist */,
+				0C233CD81D275B0700977B5F /* Info.plist */,
 				EF66919483DFD333488B5EE4 /* Assets.xcassets */,
 			);
 			name = Data;
@@ -180,6 +188,7 @@
 				0CEB671F1D247DFA00A69E9A /* LaunchScreen.storyboard in Resources */,
 				0CE3D2B61D248EEB00FFB2B5 /* FragmentShader.glsl in Resources */,
 				0CE3D2B71D248EEB00FFB2B5 /* VertexShader.glsl in Resources */,
+				0C233CD71D2754FC00977B5F /* TFUpdatePosition.glsl in Resources */,
 				EF669886CA79788451A32520 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -191,9 +200,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0CE3D2C11D24DAE400FFB2B5 /* GLCheckErrors.mm in Sources */,
+				0CE3D2C11D24DAE400FFB2B5 /* GLCheckErrors.cpp in Sources */,
 				0CEB67191D247C9700A69E9A /* ViewController.mm in Sources */,
 				0CEB67181D247C9700A69E9A /* main.mm in Sources */,
+				0C233CDF1D275E8200977B5F /* ShaderProgram.cpp in Sources */,
 				0CEB67131D247C9700A69E9A /* AppDelegate.mm in Sources */,
 				0C7B17981D2575D700D3E9E4 /* GLUtils.mm in Sources */,
 			);
