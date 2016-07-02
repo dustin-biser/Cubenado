@@ -79,11 +79,13 @@ typedef GLushort Index;
 
 - (void) loadShaders;
 
-- (void) loadVertexBuffers;
+- (void) loadCubeVertexData;
 
 - (void) loadVertexArrays;
 
 - (void) loadUniforms;
+
+- (void) loadTransformFeedbackBuffers;
 
 - (void) setUBOBindings;
 
@@ -102,10 +104,18 @@ typedef std::string PathToFile;
     ShaderProgram _shaderProgram_Cube;
     ShaderProgram _shaderProgram_TFUpdate;
     
-    GLuint _vao;                // Vertex Array Object
-    GLuint _vbo_cube;           // Vertex Buffer
-    GLuint _indexBuffer_cube;   // Index Buffer
+    // Cube data
+    GLuint _vao_cube;
+    GLuint _vbo_cube;
+    GLuint _indexBuffer_cube;
     GLsizei _numCubeIndices;
+    
+    // Transform Feedback source/destination buffers.
+    struct TransformFeedbackBuffers {
+        GLuint sourceBuffer;
+        GLuint destBuffer;
+    };
+    TransformFeedbackBuffers _vbo_TFBuffers;
     
     
     GLsizei _framebufferWidth;
@@ -116,15 +126,15 @@ typedef std::string PathToFile;
     GLuint _ubo;
     GLuint _uboBufferSize;
     Transforms _sceneTransforms;
-    GLint _uboOffset_Transforms;
+    GLint _uniformBufferDataOffset_Transforms;
     GLint _unifomBlockSize_Transforms;
     
     LightSource _lightSource;
-    GLint _uboOffset_LightSource;
+    GLint _uniformBufferDataOffset_LightSource;
     GLint _uniformBlockSize_LightSource;
     
     Material _material;
-    GLint _uboOffset_Material;
+    GLint _uniformBufferDataOffset_Material;
     GLint _uniformBlockSize_Material;
 }
 
@@ -171,7 +181,9 @@ typedef std::string PathToFile;
     
     [self loadShaders];
 
-    [self loadVertexBuffers];
+    [self loadCubeVertexData];
+    
+    [self loadTransformFeedbackBuffers];
 
     [self loadVertexArrays];
     
@@ -193,7 +205,7 @@ typedef std::string PathToFile;
 }
 
 //---------------------------------------------------------------------------------------
-- (void) loadVertexBuffers
+- (void) loadCubeVertexData
 {
     // Cube vertex data.
     std::vector<Vertex> vertexData = {
@@ -245,7 +257,6 @@ typedef std::string PathToFile;
         CHECK_GL_ERRORS;
     }
 
-
     std::vector<Index> indexData = {
             // Bottom
             3,1,0, 3,2,1,
@@ -272,16 +283,40 @@ typedef std::string PathToFile;
     }
 }
 
+
+//---------------------------------------------------------------------------------------
+- (void) loadTransformFeedbackBuffers
+{
+    glGenBuffers(2, &_vbo_TFBuffers.sourceBuffer);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, _vbo_TFBuffers.sourceBuffer);
+    
+    std::vector<glm::vec3> tfBufferData = {
+        {0.0f, 0.0f, 0.0f}
+    };
+    
+    size_t numBytes = tfBufferData.size() * sizeof(glm::vec3);
+    glBufferData(GL_ARRAY_BUFFER, numBytes, tfBufferData.data(), GL_STATIC_DRAW);
+    
+    
+    
+    
+    //-- Unbind target, and check for errors
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    CHECK_GL_ERRORS;
+}
+
+
 //---------------------------------------------------------------------------------------
 - (void)loadVertexArrays
 {
-    glGenVertexArrays(1, &_vao);
-    glBindVertexArray(_vao);
+    glGenVertexArrays(1, &_vao_cube);
+    glBindVertexArray(_vao_cube);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _indexBuffer_cube);
 
     // Enable vertex attribute slots
     {
-        glBindVertexArray(_vao);
+        glBindVertexArray(_vao_cube);
         glEnableVertexAttribArray(ATTRIBUTE_POSITION);
         glEnableVertexAttribArray(ATTRIBUTE_NORMAL);
     }
@@ -353,16 +388,17 @@ typedef std::string PathToFile;
         glBindBuffer(GL_UNIFORM_BUFFER, _ubo);
         GLvoid * pUniformBuffer = glMapBufferRange(GL_UNIFORM_BUFFER, 0, _uboBufferSize,
                                                    GL_MAP_WRITE_BIT);
+        
         // Copy Transform data to uniform buffer.
-        memcpy((char *)pUniformBuffer + _uboOffset_Transforms,
+        memcpy((char *)pUniformBuffer + _uniformBufferDataOffset_Transforms,
                &_sceneTransforms, sizeof(_sceneTransforms));
         
         // Copy LightSource data to uniform buffer.
-        memcpy((char *)pUniformBuffer + _uboOffset_LightSource,
+        memcpy((char *)pUniformBuffer + _uniformBufferDataOffset_LightSource,
                &_lightSource, sizeof(_lightSource));
         
         // Copy Material data to uniform buffer.
-        memcpy((char *)pUniformBuffer + _uboOffset_Material,
+        memcpy((char *)pUniformBuffer + _uniformBufferDataOffset_Material,
                &_material, sizeof(_material));
         
         glUnmapBuffer(GL_UNIFORM_BUFFER);
@@ -394,32 +430,46 @@ typedef std::string PathToFile;
     glUniformBlockBinding(_shaderProgram_Cube, blockIndex1, UniformBindingIndex_LightSource);
     glUniformBlockBinding(_shaderProgram_Cube, blockIndex2, UniformBindingIndex_Matrial);
     
-    GLint uboOffsetAlignment;
-    glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uboOffsetAlignment);
+    GLint uniformBufferOffsetAlignment;
+    glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uniformBufferOffsetAlignment);
     
     // Create Uniform Buffer
     glGenBuffers(1, &_ubo);
     glBindBuffer(GL_UNIFORM_BUFFER, _ubo);
-    _uboBufferSize =  align(_unifomBlockSize_Transforms, uboOffsetAlignment) +
-                      align(_uniformBlockSize_LightSource, uboOffsetAlignment) +
+    _uboBufferSize =  align(_unifomBlockSize_Transforms, uniformBufferOffsetAlignment) +
+                      align(_uniformBlockSize_LightSource, uniformBufferOffsetAlignment) +
                       _uniformBlockSize_Material;
     glBufferData(GL_UNIFORM_BUFFER, _uboBufferSize, nullptr, GL_DYNAMIC_DRAW);
     
     // Map range of uniform buffer to uniform buffer binding index
     GLint offSet = 0;
-    _uboOffset_Transforms = offSet;
-    glBindBufferRange(GL_UNIFORM_BUFFER, UniformBindingIndex_Transforms, _ubo,
-                      _uboOffset_Transforms, _unifomBlockSize_Transforms);
+    _uniformBufferDataOffset_Transforms = offSet;
+    glBindBufferRange(GL_UNIFORM_BUFFER,
+                      UniformBindingIndex_Transforms,
+                      _ubo,
+                      _uniformBufferDataOffset_Transforms,
+                      _unifomBlockSize_Transforms
+    );
+    
     offSet += _unifomBlockSize_Transforms;
-    offSet = align(offSet, uboOffsetAlignment);
-    _uboOffset_LightSource = offSet;
-    glBindBufferRange(GL_UNIFORM_BUFFER, UniformBindingIndex_LightSource, _ubo,
-                      _uboOffset_LightSource, _uniformBlockSize_LightSource);
+    offSet = align(offSet, uniformBufferOffsetAlignment);
+    _uniformBufferDataOffset_LightSource = offSet;
+    glBindBufferRange(GL_UNIFORM_BUFFER,
+                      UniformBindingIndex_LightSource,
+                      _ubo,
+                      _uniformBufferDataOffset_LightSource,
+                      _uniformBlockSize_LightSource
+    );
+    
     offSet += _uniformBlockSize_LightSource;
-    offSet = align(offSet, uboOffsetAlignment);
-    _uboOffset_Material = offSet;
-    glBindBufferRange(GL_UNIFORM_BUFFER, UniformBindingIndex_Matrial, _ubo,
-                      _uboOffset_Material, _uniformBlockSize_Material);
+    offSet = align(offSet, uniformBufferOffsetAlignment);
+    _uniformBufferDataOffset_Material = offSet;
+    glBindBufferRange(GL_UNIFORM_BUFFER,
+                      UniformBindingIndex_Matrial,
+                      _ubo,
+                      _uniformBufferDataOffset_Material,
+                      _uniformBlockSize_Material
+    );
     
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
     CHECK_GL_ERRORS;
@@ -434,15 +484,15 @@ typedef std::string PathToFile;
     GLvoid * pUniformBuffer = glMapBufferRange(GL_UNIFORM_BUFFER, 0, _uboBufferSize,
                                                GL_MAP_WRITE_BIT);
     // Copy Transform data to uniform buffer.
-    memcpy((char *)pUniformBuffer + _uboOffset_Transforms,
+    memcpy((char *)pUniformBuffer + _uniformBufferDataOffset_Transforms,
            &_sceneTransforms, sizeof(_sceneTransforms));
     
     // Copy LightSource data to uniform buffer.
-    memcpy((char *)pUniformBuffer + _uboOffset_LightSource,
+    memcpy((char *)pUniformBuffer + _uniformBufferDataOffset_LightSource,
            &_lightSource, sizeof(_lightSource));
     
     // Copy Material data to uniform buffer.
-    memcpy((char *)pUniformBuffer + _uboOffset_Material,
+    memcpy((char *)pUniformBuffer + _uniformBufferDataOffset_Material,
            &_material, sizeof(_material));
     
     glUnmapBuffer(GL_UNIFORM_BUFFER);
@@ -463,11 +513,12 @@ typedef std::string PathToFile;
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
     _shaderProgram_Cube.enable();
-    glBindVertexArray(_vao);
+    glBindVertexArray(_vao_cube);
     glBindBuffer(GL_UNIFORM_BUFFER, _ubo);
 
     glDrawElements(GL_TRIANGLES, _numCubeIndices, GL_UNSIGNED_SHORT, nullptr);
 
+    _shaderProgram_Cube.disable();
     glBindVertexArray(0);
     glUseProgram(0);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
@@ -556,12 +607,9 @@ typedef std::string PathToFile;
     [EAGLContext setCurrentContext:self.eaglContext];
     
     glDeleteBuffers(1, &_vbo_cube);
-    glDeleteVertexArrays(1, &_vao);
+    glDeleteVertexArrays(1, &_vao_cube);
     
 }
 
 
-
 @end // end ViewController
-
-
