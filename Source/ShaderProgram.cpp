@@ -79,16 +79,18 @@ void ShaderProgram::generateProgramObject() {
 
 
 //------------------------------------------------------------------------------------
-void ShaderProgram::attachVertexShader(const char * filePath) {
-    impl->attachShader(filePath, GL_VERTEX_SHADER);
+void ShaderProgram::attachVertexShader (
+    const std::string & filePath
+) {
+    impl->attachShader(filePath.c_str(), GL_VERTEX_SHADER);
 }
 
 
 //------------------------------------------------------------------------------------
 void ShaderProgram::attachFragmentShader (
-    const char * filePath
+    const std::string & filePath
 ) {
-    impl->attachShader(filePath, GL_FRAGMENT_SHADER);
+    impl->attachShader(filePath.c_str(), GL_FRAGMENT_SHADER);
 }
 
 

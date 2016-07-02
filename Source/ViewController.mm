@@ -4,8 +4,14 @@
 
 #import "ViewController.h"
 
+#import <string>
+using std::string;
+
 #import <vector>
 using std::vector;
+
+#import <unordered_map>
+using std::unordered_map;
 
 #import <glm/glm.hpp>
 #import <glm/gtc/matrix_transform.hpp>
@@ -65,6 +71,8 @@ typedef GLushort Index;
     
 @property (strong, nonatomic) EAGLContext * eaglContext;
 
+- (void) buildAssetDirectory;
+
 - (void) setupGL;
 
 - (void) tearDownGL;
@@ -81,13 +89,19 @@ typedef GLushort Index;
 
 @end
 
+typedef std::string FileName;
+typedef std::string PathToFile;
+
 @implementation ViewController {
 @private
     GLKView * _glkView;
+    
+    NSArray<NSURL *> * _assetUrls;
+    std::unordered_map<FileName, PathToFile> _assetDirectory;
 
     ShaderProgram _shaderProgram_Cube;
+    ShaderProgram _shaderProgram_TFUpdate;
     
-    GLuint _shaderProgram_TFUpdatePosition;
     GLuint _vao;                // Vertex Array Object
     GLuint _vbo_cube;           // Vertex Buffer
     GLuint _indexBuffer_cube;   // Index Buffer
@@ -144,6 +158,7 @@ typedef GLushort Index;
     
     self.preferredFramesPerSecond = 60;
     
+    [self buildAssetDirectory];
     
     [self setupGL];
 }
@@ -461,18 +476,47 @@ typedef GLushort Index;
 
 
 //---------------------------------------------------------------------------------------
+- (void) buildAssetDirectory
+{
+    NSArray<NSURL *> * glslAssets =
+            [[NSBundle mainBundle] URLsForResourcesWithExtension:@"glsl"
+                                                    subdirectory:nil];
+    
+    std::pair<FileName, PathToFile> pair;
+    for(NSURL * url in glslAssets) {
+        NSString * fileName = [[url path] lastPathComponent];
+        NSString * pathToFile = [url path];
+        pair.first = std::string([fileName UTF8String]);
+        pair.second = std::string([pathToFile UTF8String]);
+        
+        _assetDirectory.insert(pair);
+    }
+}
+
+
+//---------------------------------------------------------------------------------------
 - (void)loadShaders
 {
-    _shaderProgram_Cube.generateProgramObject();
+    //-- Create Cube Shader:
+    {
+        _shaderProgram_Cube.generateProgramObject();
+        _shaderProgram_Cube.attachVertexShader(_assetDirectory["VertexShader.glsl"]);
+        _shaderProgram_Cube.attachFragmentShader(_assetDirectory["FragmentShader.glsl"]);
+        _shaderProgram_Cube.link();
+    }
     
-    NSString * vsPathString = [[NSBundle mainBundle] pathForResource:@"VertexShader" ofType:@"glsl"];
-    const char * vsfilePath = [vsPathString UTF8String];
-    NSString * fsPathString = [[NSBundle mainBundle] pathForResource:@"FragmentShader" ofType:@"glsl"];
-    const char * fsfilePath = [fsPathString UTF8String];
     
-    _shaderProgram_Cube.attachVertexShader(vsfilePath);
-    _shaderProgram_Cube.attachFragmentShader(fsfilePath);
-    _shaderProgram_Cube.link();
+    //-- Create TFUpdate Shader:
+    {
+        _shaderProgram_TFUpdate.generateProgramObject();
+        _shaderProgram_TFUpdate.attachVertexShader(_assetDirectory["TFUpdate.glsl"]);
+        _shaderProgram_TFUpdate.attachFragmentShader(_assetDirectory["TFUpdateFrag.glsl"]);
+        
+        const GLchar* feedbackVaryings[] = { "VsOut.position" };
+        glTransformFeedbackVaryings(_shaderProgram_TFUpdate, 1, feedbackVaryings, GL_INTERLEAVED_ATTRIBS);
+        
+        _shaderProgram_TFUpdate.link();
+    }
 }
 
 
