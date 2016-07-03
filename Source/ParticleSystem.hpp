@@ -23,15 +23,16 @@ public:
         uint numParticles
     );
     
-    // Retrieve vertex buffer object holding particle positions
-    void particlePositions (
-        GLuint & vbo
-    ) const;
+    uint numParticles() const;
     
-    // Retrieve vertex buffer object holding particle positions
-    void particlePositionElementSize (
-        GLsizei & size
-    ) const;
+    // Retrieve vertex buffer object for particle position data
+    GLuint particlePositionsVbo () const;
+    
+    // Retrieve size of each particle position in bytes.
+    GLsizei particlePositionElementSizeInBytes () const;
+    
+    // Retrieve number components per particle position.
+    GLsizei numComponentsPerParticlePosition() const;
     
     
     void update (

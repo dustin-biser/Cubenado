@@ -1,5 +1,5 @@
 //
-// FragmentShader.glsl
+// CubeFS.glsl
 //
 #version 300 es
 

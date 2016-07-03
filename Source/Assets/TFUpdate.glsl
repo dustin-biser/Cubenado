@@ -11,7 +11,11 @@ out VsOut {
 } vsOut;
 
 void main() {
-    vec3 delta = vec3(0.0, 0.0, -0.1);
+    vec3 delta = vec3(0.0, 0.0, -0.2);
     
-    vsOut.position = position + delta;
+    vec3 pos = position + delta;
+    if (pos.z < -20.0) {
+        pos.z = 0.0;
+    }
+    vsOut.position = pos;
 }

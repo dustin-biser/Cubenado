@@ -21,17 +21,20 @@ using std::unordered_map;
 #import "VertexAttributeDefines.h"
 
 struct Transforms {
-    glm::mat4 modelViewMatrix;
-    glm::mat4 mvpMatrix;
+    glm::mat4 modelMatrix;
+    glm::mat4 viewMatrix;
+    glm::mat4 projectMatrix;
     glm::mat4 normalMatrix;
 };
 static const GLuint UniformBindingIndex_Transforms = 0;
+
 
 struct LightSource {
     glm::vec4 position;      // Light position in eye coordinate space.
     glm::vec4 rgbIntensity;  // Light intensity for each RGB component.
 };
 static const GLuint UniformBindingIndex_LightSource = 1;
+
 
 struct Material {
     glm::vec4 Ka;        // Coefficients of ambient reflectivity for each RGB component.
@@ -70,6 +73,8 @@ typedef GLushort Index;
 - (void) loadUniforms;
 
 - (void) setUBOBindings;
+
+- (void) setParticlePositionVboAttribMapping;
 
 
 @end // @interface CubenadoRenderer
@@ -154,6 +159,8 @@ typedef GLushort Index;
     
     uint numParticles = 1;
     _particleSystem->setNumParticles(numParticles);
+    
+    [self setParticlePositionVboAttribMapping];
 }
 
 //---------------------------------------------------------------------------------------
@@ -267,31 +274,49 @@ typedef GLushort Index;
         glBindVertexArray(_vao_cube);
         glEnableVertexAttribArray(ATTRIBUTE_POSITION);
         glEnableVertexAttribArray(ATTRIBUTE_NORMAL);
+        
+        CHECK_GL_ERRORS;
     }
     
-    // Bind for use with glVertexAttribPointer().
-    glBindBuffer(GL_ARRAY_BUFFER, _vbo_cube);
     
     // Position data mapping from VBO to vertex attribute slot
     {
         GLint stride = sizeof(Vertex);
         GLint startOffset(0);
+        glBindBuffer(GL_ARRAY_BUFFER, _vbo_cube);
         glVertexAttribPointer(ATTRIBUTE_POSITION, 3, GL_FLOAT, GL_FALSE, stride,
                               reinterpret_cast<const GLvoid *>(startOffset));
+        CHECK_GL_ERRORS;
     }
     
     // Normal data mapping from VBO to vertex attribute slot
     {
         GLint stride = sizeof(Vertex);
         GLint startOffset = sizeof(Vertex::position);
+        glBindBuffer(GL_ARRAY_BUFFER, _vbo_cube);
         glVertexAttribPointer(ATTRIBUTE_NORMAL, 3, GL_FLOAT, GL_FALSE, stride,
                               reinterpret_cast<const GLvoid *>(startOffset));
+        CHECK_GL_ERRORS;
     }
     
+}
+
+
+//---------------------------------------------------------------------------------------
+- (void)setParticlePositionVboAttribMapping
+{
+    // Instance position data mapping from ParticleSystem VBO to vertex attribute slot
+    glBindVertexArray(_vao_cube);
+    glEnableVertexAttribArray(ATTRIBUTE_INSTANCE_POS);
     
-    //-- Unbind, and restore defaults
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, _particleSystem->particlePositionsVbo());
+    
+    GLint numComponents = _particleSystem->numComponentsPerParticlePosition();
+    glVertexAttribPointer(ATTRIBUTE_INSTANCE_POS, numComponents, GL_FLOAT, GL_FALSE, 0, nullptr);
+    
+    // Advance attribute once per instance.
+    glVertexAttribDivisor(ATTRIBUTE_INSTANCE_POS, 1);
+    
     CHECK_GL_ERRORS;
 }
 
@@ -300,8 +325,8 @@ typedef GLushort Index;
 {
     //-- Create Cube Shader:
     _shaderProgram_Cube.generateProgramObject();
-    _shaderProgram_Cube.attachVertexShader(_assetDirectory.at("VertexShader.glsl"));
-    _shaderProgram_Cube.attachFragmentShader(_assetDirectory.at("FragmentShader.glsl"));
+    _shaderProgram_Cube.attachVertexShader(_assetDirectory.at("CubeVS.glsl"));
+    _shaderProgram_Cube.attachFragmentShader(_assetDirectory.at("CubeFS.glsl"));
     _shaderProgram_Cube.link();
 }
 
@@ -323,12 +348,14 @@ typedef GLushort Index;
     glm::mat4 rotMatrix = glm::rotate(glm::mat4(), angle, glm::vec3(1.0f, 1.0f, 1.0f));
     glm::mat4 transMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, -5.0f));
     glm::mat4 modelMatrix = transMatrix * rotMatrix;
-    glm::mat4 modelViewMatrix = viewMatrix * modelMatrix;
-    _sceneTransforms.modelViewMatrix = modelViewMatrix;
-    _sceneTransforms.mvpMatrix = projectionMatrix * modelViewMatrix;
+    
+    _sceneTransforms.modelMatrix = modelMatrix;
+    _sceneTransforms.viewMatrix = viewMatrix;
+    _sceneTransforms.projectMatrix = projectionMatrix;
     
     // modelViewMatrix scale is uniform, so
     // inverse = transpose -> normalMatrix = modelViewMatrix
+    glm::mat4 modelViewMatrix = viewMatrix * modelMatrix;
     _sceneTransforms.normalMatrix = glm::mat3(modelViewMatrix);
     
     
@@ -448,7 +475,6 @@ typedef GLushort Index;
     glUnmapBuffer(GL_UNIFORM_BUFFER);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
     CHECK_GL_ERRORS;
-    
 }
 
 //---------------------------------------------------------------------------------------
@@ -458,7 +484,6 @@ typedef GLushort Index;
     [self updateUniforms];
     
     _particleSystem->update(timeSinceLastUpdate);
-    _fenceParticleUpdate = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 }
 
 
@@ -472,25 +497,13 @@ typedef GLushort Index;
     // Clear the framebuffer
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
-    
-    // Signal OpenGL driver to pause submitting commands to GL command queue
-    // until after particle system has finished executing commands on GPU.
-    if (_fenceParticleUpdate) {
-        glWaitSync(_fenceParticleUpdate, 0, GL_TIMEOUT_IGNORED);
-        glDeleteSync(_fenceParticleUpdate);
-        _fenceParticleUpdate = nullptr;
-    }
-    
     _shaderProgram_Cube.enable();
     glBindVertexArray(_vao_cube);
     glBindBuffer(GL_UNIFORM_BUFFER, _ubo);
     
-    glDrawElements(GL_TRIANGLES, _numCubeIndices, GL_UNSIGNED_SHORT, nullptr);
-    
-    _shaderProgram_Cube.disable();
-    glBindVertexArray(0);
-    glUseProgram(0);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+    GLuint numInstance = _particleSystem->numParticles();
+    glDrawElementsInstanced(GL_TRIANGLES, _numCubeIndices, GL_UNSIGNED_SHORT, nullptr, numInstance);
+                            
     CHECK_GL_ERRORS;
 }
 

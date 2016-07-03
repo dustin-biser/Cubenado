@@ -17,8 +17,9 @@ using glm::vec3;
 #import "VertexAttributeDefines.h"
 
 
+#define NUM_POSITION_COMPONENTS 3
 struct ParticlePosition {
-    float positon[3];
+    float positon[NUM_POSITION_COMPONENTS];
 };
 
 
@@ -44,10 +45,6 @@ private:
     GLuint m_vao_TFSource;
     GLuint m_vao_TFDest;
     
-    GLuint m_transformFeedbackObj_TFSource;
-    GLuint m_transformFeedbackObj_TFDest;
-    
-    
     
     ParticleSystemImpl (
         const AssetDirectory & assetDirectory
@@ -58,8 +55,6 @@ private:
     void loadTransformFeedbackBuffers();
     
     void setupVertexAttribMappings();
-    
-    void setupTransformFeedbackObjects();
     
     void update (
         double secondsSinceLastUpdate
@@ -81,8 +76,6 @@ ParticleSystemImpl::ParticleSystemImpl (
     loadTransformFeedbackBuffers();
     
     setupVertexAttribMappings();
-    
-    setupTransformFeedbackObjects();
 }
 
 //---------------------------------------------------------------------------------------
@@ -134,8 +127,6 @@ void ParticleSystemImpl::loadTransformFeedbackBuffers()
     glBufferData(GL_ARRAY_BUFFER, numBytes, nullptr, GL_STREAM_COPY);
     
     
-    //-- Unbind target, and check for errors
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
     CHECK_GL_ERRORS;
 }
 
@@ -169,74 +160,37 @@ void ParticleSystemImpl::setupVertexAttribMappings()
 }
 
 //---------------------------------------------------------------------------------------
-void ParticleSystemImpl::setupTransformFeedbackObjects()
-{
-    // Set Transform Feedback Object binding for source buffer
-    {
-        glGenTransformFeedbacks(1, &m_transformFeedbackObj_TFSource);
-        glBindTransformFeedback(GL_TRANSFORM_FEEDBACK, m_transformFeedbackObj_TFSource);
-        const GLuint bindingIndex = 0;
-        glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, bindingIndex, m_TFBuffers.sourceVbo);
-        CHECK_GL_ERRORS;
-    }
-    
-    // Set Transform Feedback Object binding for destination buffer
-    {
-        glGenTransformFeedbacks(1, &m_transformFeedbackObj_TFDest);
-        glBindTransformFeedback(GL_TRANSFORM_FEEDBACK, m_transformFeedbackObj_TFDest);
-        const GLuint bindingIndex = 0;
-        glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, bindingIndex, m_TFBuffers.destVbo);
-        CHECK_GL_ERRORS;
-    }
-}
-
-//---------------------------------------------------------------------------------------
 void ParticleSystem::update (
     double secondsSinceLastUpdate
 ) {
     impl->update(secondsSinceLastUpdate);
 }
 
-///////////////////////////////////
-// TODO Dustin - Remove this:
-#include <iostream>
-using namespace std;
-///////////////////////////////////
 
 //---------------------------------------------------------------------------------------
 void ParticleSystemImpl::update (
     double secondsSinceLastUpdate
 ) {
-    
-    static int count = 0;
-    static GLuint destVbo = 0;
-    static GLuint vao_source = 0;
-    vao_source = (count == 0) ? m_vao_TFSource : m_vao_TFDest;
-    destVbo = (count == 0) ? m_TFBuffers.destVbo : m_TFBuffers.sourceVbo;
-    
-    cout << "Transform feedback Start" << endl;
-    
-    
     m_shaderProgram_TFUpdate.enable();
-    glBindVertexArray(vao_source);
+    glBindVertexArray(m_vao_TFSource);
     
+    // Prevent rasterization
     glEnable(GL_RASTERIZER_DISCARD);
     
     // Write transform feedback output to destination vbo.
-    glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, destVbo);
+    GLuint bindingIndex(0);
+    glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, bindingIndex, m_TFBuffers.destVbo);
     
     glBeginTransformFeedback(GL_POINTS);
         glDrawArrays(GL_POINTS, 0, m_numParticles);
     glEndTransformFeedback();
     
-    cout << "Transform feedback end" << endl;
     
+    // Swap source/destination transform feedback buffers
+    std::swap(m_vao_TFSource, m_vao_TFDest);
+    std::swap(m_TFBuffers.sourceVbo, m_TFBuffers.destVbo);
     
-    count = (count + 1) % 2;
-    //-- Restore defaults:
-    glBindTransformFeedback(GL_TRANSFORM_FEEDBACK, 0);
     glDisable(GL_RASTERIZER_DISCARD);
-    glBindVertexArray(0);
     CHECK_GL_ERRORS;
 }
 
@@ -248,19 +202,28 @@ void ParticleSystem::setNumParticles (
     impl->m_numParticles = numParticles;
 }
 
-
 //---------------------------------------------------------------------------------------
-void ParticleSystem::particlePositions (
-    GLuint & vbo
-) const {
-    vbo = impl->m_TFBuffers.destVbo;
+uint ParticleSystem::numParticles() const {
+    return impl->m_numParticles;
 }
 
 
 //---------------------------------------------------------------------------------------
-// Retrieve vertex buffer object holding particle positions
-void ParticleSystem::particlePositionElementSize (
-    GLsizei & size
-) const {
-    size = sizeof(ParticlePosition);
+GLuint ParticleSystem::particlePositionsVbo () const
+{
+    return impl->m_TFBuffers.destVbo;
+}
+
+
+//---------------------------------------------------------------------------------------
+GLsizei ParticleSystem::particlePositionElementSizeInBytes () const
+{
+    return sizeof(ParticlePosition);
+}
+
+
+//---------------------------------------------------------------------------------------
+GLsizei ParticleSystem::numComponentsPerParticlePosition() const
+{
+    return NUM_POSITION_COMPONENTS;
 }
