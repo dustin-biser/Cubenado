@@ -15,14 +15,10 @@ using std::unordered_map;
 #import <glm/gtc/matrix_transform.hpp>
 
 #import "ShaderProgram.hpp"
+#import "AssetDirectory.hpp"
+#import "ParticleSystem.hpp"
 
-
-
-
-// Vertex Attribute Location Slots
-const static GLuint ATTRIBUTE_POSITION = 0;
-const static GLuint ATTRIBUTE_NORMAL   = 1;
-
+#import "VertexAttributeDefines.h"
 
 struct Transforms {
     glm::mat4 modelViewMatrix;
@@ -60,11 +56,6 @@ struct Vertex {
 typedef GLushort Index;
 
 
-typedef std::string FileName;
-typedef std::string PathToFile;
-typedef std::unordered_map<FileName, PathToFile> AssetDirectory;
-
-
 
 @interface CubenadoRenderer()
 
@@ -78,8 +69,6 @@ typedef std::unordered_map<FileName, PathToFile> AssetDirectory;
 
 - (void) loadUniforms;
 
-- (void) loadTransformFeedbackBuffers;
-
 - (void) setUBOBindings;
 
 
@@ -90,24 +79,16 @@ typedef std::unordered_map<FileName, PathToFile> AssetDirectory;
     
     AssetDirectory _assetDirectory;
     
-    ShaderProgram _shaderProgram_Cube;
-    ShaderProgram _shaderProgram_TFUpdate;
+    FramebufferSize _framebufferSize;
+    
+    std::shared_ptr<ParticleSystem> _particleSystem;
     
     // Cube data
     GLuint _vao_cube;
     GLuint _vbo_cube;
     GLuint _indexBuffer_cube;
     GLsizei _numCubeIndices;
-    
-    // Transform Feedback source/destination buffers.
-    struct TransformFeedbackBuffers {
-        GLuint sourceBuffer;
-        GLuint destBuffer;
-    };
-    TransformFeedbackBuffers _vbo_TFBuffers;
-    
-    
-    FramebufferSize _framebufferSize;
+    ShaderProgram _shaderProgram_Cube;
     
     // Uniform Buffer Data
     GLuint _ubo;
@@ -120,6 +101,8 @@ typedef std::unordered_map<FileName, PathToFile> AssetDirectory;
     
     Material _material;
     GLint _uniformBufferDataOffset_Material;
+    
+    GLsync _fenceParticleUpdate;
 
 }
 
@@ -130,6 +113,8 @@ typedef std::unordered_map<FileName, PathToFile> AssetDirectory;
     self = [super init];
     if(self) {
         _framebufferSize = framebufferSize;
+        _fenceParticleUpdate = nullptr;
+        
         [self initializeRenderer];
     }
     
@@ -145,8 +130,6 @@ typedef std::unordered_map<FileName, PathToFile> AssetDirectory;
     [self loadShaders];
     
     [self loadCubeVertexData];
-    
-    [self loadTransformFeedbackBuffers];
     
     [self loadVertexArrays];
     
@@ -165,15 +148,23 @@ typedef std::unordered_map<FileName, PathToFile> AssetDirectory;
     
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
+    
+    
+    _particleSystem = std::make_shared<ParticleSystem>(_assetDirectory);
+    
+    uint numParticles = 1;
+    _particleSystem->setNumParticles(numParticles);
 }
 
 //---------------------------------------------------------------------------------------
 - (void) buildAssetDirectory
 {
+    // Gather all shader assets URLs in mainBundle with file ending in .glsl
     NSArray<NSURL *> * glslAssets =
             [[NSBundle mainBundle] URLsForResourcesWithExtension:@"glsl"
                                                     subdirectory:nil];
     
+    // Map file name to file path and place in assetDirectory.
     std::pair<FileName, PathToFile> pair;
     for(NSURL * url in glslAssets) {
         NSString * fileName = [[url path] lastPathComponent];
@@ -264,30 +255,6 @@ typedef std::unordered_map<FileName, PathToFile> AssetDirectory;
     }
 }
 
-
-//---------------------------------------------------------------------------------------
-- (void) loadTransformFeedbackBuffers
-{
-    glGenBuffers(2, &_vbo_TFBuffers.sourceBuffer);
-    
-    glBindBuffer(GL_ARRAY_BUFFER, _vbo_TFBuffers.sourceBuffer);
-    
-    std::vector<glm::vec3> tfBufferData = {
-        {0.0f, 0.0f, 0.0f}
-    };
-    
-    size_t numBytes = tfBufferData.size() * sizeof(glm::vec3);
-    glBufferData(GL_ARRAY_BUFFER, numBytes, tfBufferData.data(), GL_STATIC_DRAW);
-    
-    
-    
-    
-    //-- Unbind target, and check for errors
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    CHECK_GL_ERRORS;
-}
-
-
 //---------------------------------------------------------------------------------------
 - (void)loadVertexArrays
 {
@@ -332,25 +299,10 @@ typedef std::unordered_map<FileName, PathToFile> AssetDirectory;
 - (void)loadShaders
 {
     //-- Create Cube Shader:
-    {
-        _shaderProgram_Cube.generateProgramObject();
-        _shaderProgram_Cube.attachVertexShader(_assetDirectory["VertexShader.glsl"]);
-        _shaderProgram_Cube.attachFragmentShader(_assetDirectory["FragmentShader.glsl"]);
-        _shaderProgram_Cube.link();
-    }
-    
-    
-    //-- Create TFUpdate Shader:
-    {
-        _shaderProgram_TFUpdate.generateProgramObject();
-        _shaderProgram_TFUpdate.attachVertexShader(_assetDirectory["TFUpdate.glsl"]);
-        _shaderProgram_TFUpdate.attachFragmentShader(_assetDirectory["TFUpdateFrag.glsl"]);
-        
-        const GLchar* feedbackVaryings[] = { "VsOut.position" };
-        glTransformFeedbackVaryings(_shaderProgram_TFUpdate, 1, feedbackVaryings, GL_INTERLEAVED_ATTRIBS);
-        
-        _shaderProgram_TFUpdate.link();
-    }
+    _shaderProgram_Cube.generateProgramObject();
+    _shaderProgram_Cube.attachVertexShader(_assetDirectory.at("VertexShader.glsl"));
+    _shaderProgram_Cube.attachFragmentShader(_assetDirectory.at("FragmentShader.glsl"));
+    _shaderProgram_Cube.link();
 }
 
 
@@ -476,11 +428,8 @@ typedef std::unordered_map<FileName, PathToFile> AssetDirectory;
 }
 
 //---------------------------------------------------------------------------------------
-// Call once per frame, before [CubenadoRenderer render].
-- (void) update:(NSInteger)timeSinceLastUpdate;
+- (void) updateUniforms
 {
-    // Update per frame constants here.
-    
     glBindBuffer(GL_UNIFORM_BUFFER, _ubo);
     GLvoid * pUniformBuffer = glMapBufferRange(GL_UNIFORM_BUFFER, 0, _uboBufferSize,
                                                GL_MAP_WRITE_BIT);
@@ -499,6 +448,17 @@ typedef std::unordered_map<FileName, PathToFile> AssetDirectory;
     glUnmapBuffer(GL_UNIFORM_BUFFER);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
     CHECK_GL_ERRORS;
+    
+}
+
+//---------------------------------------------------------------------------------------
+// Call once per frame, before [CubenadoRenderer render].
+- (void) update:(NSTimeInterval)timeSinceLastUpdate;
+{
+    [self updateUniforms];
+    
+    _particleSystem->update(timeSinceLastUpdate);
+    _fenceParticleUpdate = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 }
 
 
@@ -506,10 +466,20 @@ typedef std::unordered_map<FileName, PathToFile> AssetDirectory;
 // Call once per frame, after [CubenadoRenderer update].
 - (void)render: (FramebufferSize)framebufferSize
 {
-    glViewport(0, 0, framebufferSize.width, framebufferSize.height);
+    _framebufferSize = framebufferSize;
+    glViewport(0, 0, _framebufferSize.width, _framebufferSize.height);
     
     // Clear the framebuffer
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    
+    
+    // Signal OpenGL driver to pause submitting commands to GL command queue
+    // until after particle system has finished executing commands on GPU.
+    if (_fenceParticleUpdate) {
+        glWaitSync(_fenceParticleUpdate, 0, GL_TIMEOUT_IGNORED);
+        glDeleteSync(_fenceParticleUpdate);
+        _fenceParticleUpdate = nullptr;
+    }
     
     _shaderProgram_Cube.enable();
     glBindVertexArray(_vao_cube);

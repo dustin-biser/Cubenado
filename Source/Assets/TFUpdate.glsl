@@ -12,5 +12,6 @@ out VsOut {
 
 void main() {
     vec3 delta = vec3(0.0, 0.0, -0.1);
+    
     vsOut.position = position + delta;
 }

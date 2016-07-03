@@ -12,6 +12,7 @@
     #import <QuartzCore/QuartzCore.h>
 
     #import "GLCheckErrors.h"
+    #import "NumericTypes.h"
 #endif
 
 #ifdef __cplusplus
@@ -19,4 +20,5 @@
     #import <OpenGLES/ES3/glext.h>
 
     #import "GLCheckErrors.h"
+    #import "NumericTypes.h"
 #endif

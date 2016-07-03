@@ -13,7 +13,7 @@
 		0C233CE41D28587E00977B5F /* CubenadoRenderer.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0C233CE31D28587E00977B5F /* CubenadoRenderer.mm */; };
 		0C7B17931D24DE8C00D3E9E4 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0C7B17921D24DE8C00D3E9E4 /* UIKit.framework */; };
 		0C7B17951D24DEA900D3E9E4 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0C7B17941D24DEA900D3E9E4 /* Foundation.framework */; };
-		0CBD81911D28A4DD0059CB8F /* ParticleSystem.m in Sources */ = {isa = PBXBuildFile; fileRef = 0CBD81901D28A4DD0059CB8F /* ParticleSystem.m */; };
+		0CBD81911D28A4DD0059CB8F /* ParticleSystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0CBD81901D28A4DD0059CB8F /* ParticleSystem.cpp */; };
 		0CE3D2B61D248EEB00FFB2B5 /* FragmentShader.glsl in Resources */ = {isa = PBXBuildFile; fileRef = 0CE3D2B41D248EEB00FFB2B5 /* FragmentShader.glsl */; };
 		0CE3D2B71D248EEB00FFB2B5 /* VertexShader.glsl in Resources */ = {isa = PBXBuildFile; fileRef = 0CE3D2B51D248EEB00FFB2B5 /* VertexShader.glsl */; };
 		0CE3D2B91D24C83E00FFB2B5 /* OpenGLES.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0CE3D2B81D24C83E00FFB2B5 /* OpenGLES.framework */; };
@@ -36,8 +36,11 @@
 		0C233CE31D28587E00977B5F /* CubenadoRenderer.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = CubenadoRenderer.mm; sourceTree = "<group>"; };
 		0C7B17921D24DE8C00D3E9E4 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		0C7B17941D24DEA900D3E9E4 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
-		0CBD818F1D28A4DD0059CB8F /* ParticleSystem.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ParticleSystem.h; sourceTree = "<group>"; };
-		0CBD81901D28A4DD0059CB8F /* ParticleSystem.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ParticleSystem.m; sourceTree = "<group>"; };
+		0CBD818F1D28A4DD0059CB8F /* ParticleSystem.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = ParticleSystem.hpp; sourceTree = "<group>"; };
+		0CBD81901D28A4DD0059CB8F /* ParticleSystem.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ParticleSystem.cpp; sourceTree = "<group>"; };
+		0CBD81921D28B7440059CB8F /* AssetDirectory.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = AssetDirectory.hpp; sourceTree = "<group>"; };
+		0CBD81931D28C5220059CB8F /* NumericTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NumericTypes.h; sourceTree = "<group>"; };
+		0CBD81941D28C8990059CB8F /* VertexAttributeDefines.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VertexAttributeDefines.h; sourceTree = "<group>"; };
 		0CE3D2B41D248EEB00FFB2B5 /* FragmentShader.glsl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FragmentShader.glsl; sourceTree = "<group>"; };
 		0CE3D2B51D248EEB00FFB2B5 /* VertexShader.glsl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = VertexShader.glsl; sourceTree = "<group>"; };
 		0CE3D2B81D24C83E00FFB2B5 /* OpenGLES.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGLES.framework; path = System/Library/Frameworks/OpenGLES.framework; sourceTree = SDKROOT; };
@@ -119,8 +122,11 @@
 				0CEB67121D247C9700A69E9A /* ViewController.mm */,
 				0C233CE21D28587E00977B5F /* CubenadoRenderer.h */,
 				0C233CE31D28587E00977B5F /* CubenadoRenderer.mm */,
-				0CBD818F1D28A4DD0059CB8F /* ParticleSystem.h */,
-				0CBD81901D28A4DD0059CB8F /* ParticleSystem.m */,
+				0CBD818F1D28A4DD0059CB8F /* ParticleSystem.hpp */,
+				0CBD81901D28A4DD0059CB8F /* ParticleSystem.cpp */,
+				0CBD81921D28B7440059CB8F /* AssetDirectory.hpp */,
+				0CBD81931D28C5220059CB8F /* NumericTypes.h */,
+				0CBD81941D28C8990059CB8F /* VertexAttributeDefines.h */,
 			);
 			path = Source;
 			sourceTree = "<group>";
@@ -213,7 +219,7 @@
 				0CEB67191D247C9700A69E9A /* ViewController.mm in Sources */,
 				0CEB67181D247C9700A69E9A /* main.mm in Sources */,
 				0C233CDF1D275E8200977B5F /* ShaderProgram.cpp in Sources */,
-				0CBD81911D28A4DD0059CB8F /* ParticleSystem.m in Sources */,
+				0CBD81911D28A4DD0059CB8F /* ParticleSystem.cpp in Sources */,
 				0CEB67131D247C9700A69E9A /* AppDelegate.mm in Sources */,
 				0C233CE41D28587E00977B5F /* CubenadoRenderer.mm in Sources */,
 			);

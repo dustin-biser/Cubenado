@@ -17,6 +17,6 @@ typedef struct FramebufferSize FramebufferSize;
 
 - (void) render:(FramebufferSize)framebufferSize;
 
-- (void) update:(NSInteger)timeSinceLastUpdate;
+- (void) update:(NSTimeInterval)timeSinceLastUpdate;
 
 @end
