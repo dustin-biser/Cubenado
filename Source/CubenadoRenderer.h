@@ -2,6 +2,7 @@
 //  CubenadoRenderer.h
 //
 
+#import <Foundation/Foundation.h>
 
 struct FramebufferSize {
     GLint width;
@@ -16,6 +17,6 @@ typedef struct FramebufferSize FramebufferSize;
 
 - (void) render:(FramebufferSize)framebufferSize;
 
-- (void) update;
+- (void) update:(NSInteger)timeSinceLastUpdate;
 
 @end

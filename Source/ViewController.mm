@@ -70,7 +70,7 @@
 // GLKViewController update method
 - (void) update
 {
-    [_cubenadoRenderer update];
+    [_cubenadoRenderer update:[self timeSinceLastUpdate]];
 }
 
 

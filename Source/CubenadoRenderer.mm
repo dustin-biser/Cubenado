@@ -37,7 +37,6 @@ struct LightSource {
 };
 static const GLuint UniformBindingIndex_LightSource = 1;
 
-
 struct Material {
     glm::vec4 Ka;        // Coefficients of ambient reflectivity for each RGB component.
     glm::vec4 Kd;        // Coefficients of diffuse reflectivity for each RGB component.
@@ -115,15 +114,12 @@ typedef std::unordered_map<FileName, PathToFile> AssetDirectory;
     GLuint _uboBufferSize;
     Transforms _sceneTransforms;
     GLint _uniformBufferDataOffset_Transforms;
-    GLint _unifomBlockSize_Transforms;
     
     LightSource _lightSource;
     GLint _uniformBufferDataOffset_LightSource;
-    GLint _uniformBlockSize_LightSource;
     
     Material _material;
     GLint _uniformBufferDataOffset_Material;
-    GLint _uniformBlockSize_Material;
 
 }
 
@@ -426,15 +422,6 @@ typedef std::unordered_map<FileName, PathToFile> AssetDirectory;
     GLuint blockIndex1 = glGetUniformBlockIndex(_shaderProgram_Cube, "LightSource");
     GLuint blockIndex2 = glGetUniformBlockIndex(_shaderProgram_Cube, "Material");
     
-    // Query uniform block size
-    glGetActiveUniformBlockiv(_shaderProgram_Cube, blockIndex0, GL_UNIFORM_BLOCK_DATA_SIZE,
-                              &_unifomBlockSize_Transforms);
-    glGetActiveUniformBlockiv(_shaderProgram_Cube, blockIndex1, GL_UNIFORM_BLOCK_DATA_SIZE,
-                              &_uniformBlockSize_LightSource);
-    glGetActiveUniformBlockiv(_shaderProgram_Cube, blockIndex2, GL_UNIFORM_BLOCK_DATA_SIZE,
-                              &_uniformBlockSize_Material);
-    
-    
     // Bind shader block index to uniform buffer binding index
     glUniformBlockBinding(_shaderProgram_Cube, blockIndex0, UniformBindingIndex_Transforms);
     glUniformBlockBinding(_shaderProgram_Cube, blockIndex1, UniformBindingIndex_LightSource);
@@ -443,43 +430,46 @@ typedef std::unordered_map<FileName, PathToFile> AssetDirectory;
     GLint uniformBufferOffsetAlignment;
     glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uniformBufferOffsetAlignment);
     
+    const GLint sizeofTransforms = sizeof(Transforms);
+    const GLint sizeofLightSource = sizeof(LightSource);
+    const GLint sizeofMaterial = sizeof(Material);
+    
     // Create Uniform Buffer
     glGenBuffers(1, &_ubo);
     glBindBuffer(GL_UNIFORM_BUFFER, _ubo);
-    _uboBufferSize =  align(_unifomBlockSize_Transforms, uniformBufferOffsetAlignment) +
-    align(_uniformBlockSize_LightSource, uniformBufferOffsetAlignment) +
-    _uniformBlockSize_Material;
+    _uboBufferSize =  align(sizeofTransforms, uniformBufferOffsetAlignment) +
+                      align(sizeofLightSource, uniformBufferOffsetAlignment) +
+                      sizeofMaterial;
     glBufferData(GL_UNIFORM_BUFFER, _uboBufferSize, nullptr, GL_DYNAMIC_DRAW);
     
-    // Map range of uniform buffer to uniform buffer binding index
-    GLint offSet = 0;
-    _uniformBufferDataOffset_Transforms = offSet;
-    glBindBufferRange(GL_UNIFORM_BUFFER,
-                      UniformBindingIndex_Transforms,
-                      _ubo,
-                      _uniformBufferDataOffset_Transforms,
-                      _unifomBlockSize_Transforms
-                      );
-    
-    offSet += _unifomBlockSize_Transforms;
-    offSet = align(offSet, uniformBufferOffsetAlignment);
-    _uniformBufferDataOffset_LightSource = offSet;
-    glBindBufferRange(GL_UNIFORM_BUFFER,
-                      UniformBindingIndex_LightSource,
-                      _ubo,
-                      _uniformBufferDataOffset_LightSource,
-                      _uniformBlockSize_LightSource
-                      );
-    
-    offSet += _uniformBlockSize_LightSource;
-    offSet = align(offSet, uniformBufferOffsetAlignment);
-    _uniformBufferDataOffset_Material = offSet;
-    glBindBufferRange(GL_UNIFORM_BUFFER,
-                      UniformBindingIndex_Matrial,
-                      _ubo,
-                      _uniformBufferDataOffset_Material,
-                      _uniformBlockSize_Material
-                      );
+    // Map range of uniform buffer to each buffer binding index
+    {
+        GLint offSet = 0;
+        _uniformBufferDataOffset_Transforms = offSet;
+        glBindBufferRange(GL_UNIFORM_BUFFER,
+                          UniformBindingIndex_Transforms,
+                          _ubo,
+                          _uniformBufferDataOffset_Transforms,
+                          sizeof(Transforms));
+        
+        offSet += sizeofTransforms;
+        offSet = align(offSet, uniformBufferOffsetAlignment);
+        _uniformBufferDataOffset_LightSource = offSet;
+        glBindBufferRange(GL_UNIFORM_BUFFER,
+                          UniformBindingIndex_LightSource,
+                          _ubo,
+                          _uniformBufferDataOffset_LightSource,
+                          sizeof(LightSource));
+        
+        offSet += sizeofLightSource;
+        offSet = align(offSet, uniformBufferOffsetAlignment);
+        _uniformBufferDataOffset_Material = offSet;
+        glBindBufferRange(GL_UNIFORM_BUFFER,
+                          UniformBindingIndex_Matrial,
+                          _ubo,
+                          _uniformBufferDataOffset_Material,
+                          sizeofMaterial);
+    }
     
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
     CHECK_GL_ERRORS;
@@ -487,7 +477,7 @@ typedef std::unordered_map<FileName, PathToFile> AssetDirectory;
 
 //---------------------------------------------------------------------------------------
 // Call once per frame, before [CubenadoRenderer render].
-- (void) update
+- (void) update:(NSInteger)timeSinceLastUpdate;
 {
     // Update per frame constants here.
     
