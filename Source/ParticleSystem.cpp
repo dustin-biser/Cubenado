@@ -155,7 +155,7 @@ void ParticleSystemImpl::loadTransformFeedbackPositionBuffers()
 {
     std::vector<glm::vec3> positionData(m_numParticles);
     
-    const glm::vec3 startPos(0.0f, -1.0f, -8.0f);
+    const glm::vec3 startPos(0.0f, -2.0f, -8.0f);
     const glm::vec3 delta(0.0f, 0.2f, -0.87f);
     for(int i(0); i < m_numParticles; ++i) {
         glm::vec3 pos = startPos + float(i)*delta;
@@ -184,11 +184,11 @@ void ParticleSystemImpl::loadParticleRotationBuffers()
     std::vector<ParticleRotation> particleRotations(m_numParticles);
     
     const glm::vec3 axis= glm::vec3(0.0f, 1.0f, 0.0f);
-    const float rotVelocity = 2.5f;
+    const float rotVelocity = 10.5f;
     for(int i(0); i < m_numParticles; ++i) {
         ParticleRotation data;
         data.axisOfRotation = axis + glm::vec3(i*0.01f, 0.0f, 0.0f);
-        data.rotionalVelocity = rotVelocity + i*0.1f;
+        data.rotionalVelocity = rotVelocity - i*0.2f;
         particleRotations[i] = data;
     }
     
