@@ -75,6 +75,10 @@ private:
     
     void setStaticUniformData();
     
+    void setNumParticles (
+        uint numParticles
+    );
+    
     void update (
         double secondsSinceLastUpdate
     );
@@ -149,15 +153,18 @@ void ParticleSystemImpl::loadShaders() {
 //---------------------------------------------------------------------------------------
 void ParticleSystemImpl::loadTransformFeedbackPositionBuffers()
 {
+    std::vector<glm::vec3> positionData(m_numParticles);
+    
+    const glm::vec3 startPos(0.0f, -1.0f, -8.0f);
+    const glm::vec3 delta(0.0f, 0.2f, -0.87f);
+    for(int i(0); i < m_numParticles; ++i) {
+        glm::vec3 pos = startPos + float(i)*delta;
+        positionData[i] = pos;
+    }
+    GLsizeiptr numBytes = positionData.size() * sizeof(ParticlePosition);
+    
     glGenBuffers(1, &m_TFBuffers.sourceVbo);
     glGenBuffers(1, &m_TFBuffers.destVbo);
-    
-    std::vector<glm::vec3> positionData = {
-        {0.0f, 0.0f, -5.0f}
-    };
-    GLsizeiptr numBytes = positionData.size() * sizeof(ParticlePosition);
-    numBytes *= m_numParticles;
-    
     
     // Place position data into source VBO.
     glBindBuffer(GL_ARRAY_BUFFER, m_TFBuffers.sourceVbo);
@@ -174,19 +181,23 @@ void ParticleSystemImpl::loadTransformFeedbackPositionBuffers()
 //---------------------------------------------------------------------------------------
 void ParticleSystemImpl::loadParticleRotationBuffers()
 {
-    glGenBuffers(1, &m_vbo_particleRotation);
+    std::vector<ParticleRotation> particleRotations(m_numParticles);
     
-    std::vector<ParticleRotation> particleRotations;
-    ParticleRotation data;
-    data.axisOfRotation = glm::vec3(0.2f, 0.9f, 0.0f);
-    data.rotionalVelocity = 2.0f;
-    particleRotations.push_back(data);
+    const glm::vec3 axis= glm::vec3(0.0f, 1.0f, 0.0f);
+    const float rotVelocity = 2.5f;
+    for(int i(0); i < m_numParticles; ++i) {
+        ParticleRotation data;
+        data.axisOfRotation = axis + glm::vec3(i*0.01f, 0.0f, 0.0f);
+        data.rotionalVelocity = rotVelocity + i*0.1f;
+        particleRotations[i] = data;
+    }
+    
+    glGenBuffers(1, &m_vbo_particleRotation);
     
     glBindBuffer(GL_ARRAY_BUFFER, m_vbo_particleRotation);
     
     // Allocate space for each of m_numParticles.
     GLsizeiptr numBytes = particleRotations.size() * sizeof(ParticleRotation);
-    numBytes *= m_numParticles;
     glBufferData(GL_ARRAY_BUFFER, numBytes, particleRotations.data(), GL_STATIC_DRAW);
     
     CHECK_GL_ERRORS;
@@ -247,7 +258,7 @@ void ParticleSystemImpl::setupVertexAttribMappings()
 //---------------------------------------------------------------------------------------
 void ParticleSystemImpl::setStaticUniformData()
 {
-    const glm::vec3 centerOfRotations{0.0f, 0.0f, -6.0f};
+    const glm::vec3 centerOfRotations{0.0f, 0.0f, -10.0f};
     
     m_shaderProgram_TFUpdate.enable();
     glUniform3fv(m_uniformLocations.centerOfRotation, 1, &centerOfRotations[0]);
@@ -269,6 +280,7 @@ void ParticleSystemImpl::updateUniforms (
     double secondsSinceLastUpdate
 ) {
     glUniform1f(m_uniformLocations.deltaTime, secondsSinceLastUpdate);
+    CHECK_GL_ERRORS;
 }
 
 //---------------------------------------------------------------------------------------
@@ -302,11 +314,24 @@ void ParticleSystemImpl::update (
 
 
 //---------------------------------------------------------------------------------------
+void ParticleSystemImpl::setNumParticles (
+    uint numParticles
+) {
+    if(numParticles != m_numParticles) {
+        //TODO: Reallocate VBO buffers if numParticles changes
+    }
+        
+    m_numParticles = numParticles;
+}
+
+
+//---------------------------------------------------------------------------------------
 void ParticleSystem::setNumParticles (
     uint numParticles
 ) {
-    impl->m_numParticles = numParticles;
+    impl->setNumParticles(numParticles);
 }
+
 
 //---------------------------------------------------------------------------------------
 uint ParticleSystem::numParticles() const {

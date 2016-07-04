@@ -156,12 +156,8 @@ typedef GLushort Index;
     CHECK_GL_ERRORS;
     
     
-    uint numParticles = 1;
+    uint numParticles = 20;
     _particleSystem = std::make_shared<ParticleSystem>(_assetDirectory, numParticles);
-    
-    CHECK_GL_ERRORS;
-    
-    [self setParticlePositionVboAttribMapping];
 }
 
 //---------------------------------------------------------------------------------------
@@ -454,6 +450,7 @@ typedef GLushort Index;
     CHECK_GL_ERRORS;
 }
 
+
 //---------------------------------------------------------------------------------------
 - (void) updateUniforms
 {
@@ -477,6 +474,7 @@ typedef GLushort Index;
     CHECK_GL_ERRORS;
 }
 
+
 //---------------------------------------------------------------------------------------
 // Call once per frame, before [CubenadoRenderer render].
 - (void) update:(NSTimeInterval)timeSinceLastUpdate;
@@ -496,6 +494,8 @@ typedef GLushort Index;
     
     // Clear the framebuffer
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    
+    [self setParticlePositionVboAttribMapping];
     
     _shaderProgram_Cube.enable();
     glBindVertexArray(_vao_cube);
