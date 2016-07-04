@@ -153,12 +153,13 @@ typedef GLushort Index;
     
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
+    CHECK_GL_ERRORS;
     
-    
-    _particleSystem = std::make_shared<ParticleSystem>(_assetDirectory);
     
     uint numParticles = 1;
-    _particleSystem->setNumParticles(numParticles);
+    _particleSystem = std::make_shared<ParticleSystem>(_assetDirectory, numParticles);
+    
+    CHECK_GL_ERRORS;
     
     [self setParticlePositionVboAttribMapping];
 }
@@ -307,15 +308,15 @@ typedef GLushort Index;
 {
     // Instance position data mapping from ParticleSystem VBO to vertex attribute slot
     glBindVertexArray(_vao_cube);
-    glEnableVertexAttribArray(ATTRIBUTE_INSTANCE_POS);
+    glEnableVertexAttribArray(ATTRIBUTE_INSTANCE_0);
     
     glBindBuffer(GL_ARRAY_BUFFER, _particleSystem->particlePositionsVbo());
     
     GLint numComponents = _particleSystem->numComponentsPerParticlePosition();
-    glVertexAttribPointer(ATTRIBUTE_INSTANCE_POS, numComponents, GL_FLOAT, GL_FALSE, 0, nullptr);
+    glVertexAttribPointer(ATTRIBUTE_INSTANCE_0, numComponents, GL_FLOAT, GL_FALSE, 0, nullptr);
     
     // Advance attribute once per instance.
-    glVertexAttribDivisor(ATTRIBUTE_INSTANCE_POS, 1);
+    glVertexAttribDivisor(ATTRIBUTE_INSTANCE_0, 1);
     
     CHECK_GL_ERRORS;
 }
@@ -339,15 +340,14 @@ typedef GLushort Index;
     glm::mat4 projectionMatrix = glm::perspective(glm::radians(fovy), aspect, 0.1f, 100.0f);
     
     glm::mat4 viewMatrix = glm::lookAt (
-                                        glm::vec3{0.0f, 0.0f, 0.0f},  // eye
-                                        glm::vec3{0.0f, 0.0f, -1.0f}, // center
-                                        glm::vec3{0.0f, 1.0f, 0.0f}   // up
-                                        );
+        glm::vec3{0.0f, 0.0f, 0.0f},  // eye
+        glm::vec3{0.0f, 0.0f, -1.0f}, // center
+        glm::vec3{0.0f, 1.0f, 0.0f}   // up
+    );
     
     float angle = M_PI * 0.25f;
     glm::mat4 rotMatrix = glm::rotate(glm::mat4(), angle, glm::vec3(1.0f, 1.0f, 1.0f));
-    glm::mat4 transMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, 0.0f, -5.0f));
-    glm::mat4 modelMatrix = transMatrix * rotMatrix;
+    glm::mat4 modelMatrix = rotMatrix;
     
     _sceneTransforms.modelMatrix = modelMatrix;
     _sceneTransforms.viewMatrix = viewMatrix;

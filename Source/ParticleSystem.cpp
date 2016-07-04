@@ -11,9 +11,7 @@ using std::vector;
 using glm::vec3;
 
 #import "ShaderProgram.hpp"
-
 #import "AssetDirectory.hpp"
-
 #import "VertexAttributeDefines.h"
 
 
@@ -22,6 +20,10 @@ struct ParticlePosition {
     float positon[NUM_POSITION_COMPONENTS];
 };
 
+struct ParticleRotation {
+    glm::vec3 axisOfRotation;
+    float rotionalVelocity;
+};
 
 
 class ParticleSystemImpl {
@@ -29,11 +31,18 @@ private:
     friend class ParticleSystem;
     
     
+//-- Members:
     uint m_numParticles;
     
     const AssetDirectory & m_assetDirectory;
     
     ShaderProgram m_shaderProgram_TFUpdate;
+    struct UniformLocations {
+        GLint deltaTime;
+        GLint centerOfRotation;
+    };
+    UniformLocations m_uniformLocations;
+    
     
     // Transform Feedback source/destination buffers.
     struct TransformFeedbackBuffers {
@@ -45,18 +54,32 @@ private:
     GLuint m_vao_TFSource;
     GLuint m_vao_TFDest;
     
+    GLuint m_vbo_particleRotation;
     
+    
+    
+    
+//-- Methods:
     ParticleSystemImpl (
-        const AssetDirectory & assetDirectory
+        const AssetDirectory & assetDirectory,
+        uint numParticles
     );
     
     void loadShaders();
     
-    void loadTransformFeedbackBuffers();
+    void loadTransformFeedbackPositionBuffers();
+    
+    void loadParticleRotationBuffers();
     
     void setupVertexAttribMappings();
     
+    void setStaticUniformData();
+    
     void update (
+        double secondsSinceLastUpdate
+    );
+    
+    void updateUniforms (
         double secondsSinceLastUpdate
     );
     
@@ -65,24 +88,29 @@ private:
 
 //---------------------------------------------------------------------------------------
 ParticleSystemImpl::ParticleSystemImpl (
-    const AssetDirectory & assetDirectory
+    const AssetDirectory & assetDirectory,
+    uint numParticles
 )
     : m_assetDirectory(assetDirectory),
-      m_numParticles(0)
-
+      m_numParticles(numParticles)
 {
     loadShaders();
     
-    loadTransformFeedbackBuffers();
+    loadTransformFeedbackPositionBuffers();
+    
+    loadParticleRotationBuffers();
     
     setupVertexAttribMappings();
+    
+    setStaticUniformData();
 }
 
 //---------------------------------------------------------------------------------------
 ParticleSystem::ParticleSystem (
-    const AssetDirectory & assetDirectory
+    const AssetDirectory & assetDirectory,
+    uint numParticles
 ) {
-    impl = new ParticleSystemImpl(assetDirectory);
+    impl = new ParticleSystemImpl(assetDirectory, numParticles);
 }
 
 //---------------------------------------------------------------------------------------
@@ -103,19 +131,32 @@ void ParticleSystemImpl::loadShaders() {
     glTransformFeedbackVaryings(m_shaderProgram_TFUpdate, 1, feedbackVaryings, GL_INTERLEAVED_ATTRIBS);
     
     m_shaderProgram_TFUpdate.link();
+    
+    
+    //-- Query uniform locations:
+    {
+        m_uniformLocations.deltaTime =
+            glGetUniformLocation(m_shaderProgram_TFUpdate, "deltaTime");
+        
+        m_uniformLocations.centerOfRotation =
+            glGetUniformLocation(m_shaderProgram_TFUpdate, "centerOfRotation");
+    }
+    
+    CHECK_GL_ERRORS;
 }
 
 
 //---------------------------------------------------------------------------------------
-void ParticleSystemImpl::loadTransformFeedbackBuffers()
+void ParticleSystemImpl::loadTransformFeedbackPositionBuffers()
 {
     glGenBuffers(1, &m_TFBuffers.sourceVbo);
     glGenBuffers(1, &m_TFBuffers.destVbo);
     
     std::vector<glm::vec3> positionData = {
-        {0.0f, 0.0f, 0.0f}
+        {0.0f, 0.0f, -5.0f}
     };
-    size_t numBytes = positionData.size() * sizeof(ParticlePosition);
+    GLsizeiptr numBytes = positionData.size() * sizeof(ParticlePosition);
+    numBytes *= m_numParticles;
     
     
     // Place position data into source VBO.
@@ -126,6 +167,27 @@ void ParticleSystemImpl::loadTransformFeedbackBuffers()
     glBindBuffer(GL_ARRAY_BUFFER, m_TFBuffers.destVbo);
     glBufferData(GL_ARRAY_BUFFER, numBytes, nullptr, GL_STREAM_COPY);
     
+    CHECK_GL_ERRORS;
+}
+
+
+//---------------------------------------------------------------------------------------
+void ParticleSystemImpl::loadParticleRotationBuffers()
+{
+    glGenBuffers(1, &m_vbo_particleRotation);
+    
+    std::vector<ParticleRotation> particleRotations;
+    ParticleRotation data;
+    data.axisOfRotation = glm::vec3(0.2f, 0.9f, 0.0f);
+    data.rotionalVelocity = 2.0f;
+    particleRotations.push_back(data);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, m_vbo_particleRotation);
+    
+    // Allocate space for each of m_numParticles.
+    GLsizeiptr numBytes = particleRotations.size() * sizeof(ParticleRotation);
+    numBytes *= m_numParticles;
+    glBufferData(GL_ARRAY_BUFFER, numBytes, particleRotations.data(), GL_STATIC_DRAW);
     
     CHECK_GL_ERRORS;
 }
@@ -136,28 +198,63 @@ void ParticleSystemImpl::setupVertexAttribMappings()
     glGenVertexArrays(1, &m_vao_TFSource);
     glGenVertexArrays(1, &m_vao_TFDest);
     
-    // Set mapping of data from transform feedback source buffer into
-    // vertex attribute slots
-    {
-        glBindVertexArray(m_vao_TFSource);
-        glEnableVertexAttribArray(ATTRIBUTE_POSITION);
-        
-        glBindBuffer(GL_ARRAY_BUFFER, m_TFBuffers.sourceVbo);
-        glVertexAttribPointer(ATTRIBUTE_POSITION, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-    }
+    GLuint vao[] = {m_vao_TFSource, m_vao_TFDest};
+    GLuint vertexBuffer[] = {m_TFBuffers.sourceVbo, m_TFBuffers.destVbo};
     
-    // Set mapping of data from transform feedback destination buffer into
-    // vertex attribute slots
-    {
-        glBindVertexArray(m_vao_TFDest);
-        glEnableVertexAttribArray(ATTRIBUTE_POSITION);
+    for (int i(0); i < 2; ++i) {
+        glBindVertexArray(vao[i]);
         
-        glBindBuffer(GL_ARRAY_BUFFER, m_TFBuffers.destVbo);
-        glVertexAttribPointer(ATTRIBUTE_POSITION, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+        // Enable vertex attribute slots
+        glEnableVertexAttribArray(ATTRIBUTE_POSITION);
+        glEnableVertexAttribArray(ATTRIBUTE_SLOT_1);
+        glEnableVertexAttribArray(ATTRIBUTE_SLOT_2);
+        CHECK_GL_ERRORS;
+        
+        // Set mapping of data from transform feedback buffer into
+        // vertex attribute slots
+        
+        // Position data
+        {
+            glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer[i]);
+            glVertexAttribPointer(ATTRIBUTE_POSITION, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+        }
+        CHECK_GL_ERRORS;
+        
+        // Axis of Rotation data
+        {
+            glBindBuffer(GL_ARRAY_BUFFER, m_vbo_particleRotation);
+            GLsizei stride = sizeof(ParticleRotation);
+            GLsizei offset = 0;
+            GLboolean normalizeYes(GL_TRUE);
+            glVertexAttribPointer(ATTRIBUTE_SLOT_1, 3, GL_FLOAT, normalizeYes, stride,
+                                  reinterpret_cast<const GLvoid *>(offset));
+        }
+        CHECK_GL_ERRORS;
+        
+        // Rotation velocity data
+        {
+            glBindBuffer(GL_ARRAY_BUFFER, m_vbo_particleRotation);
+            GLsizei stride = sizeof(ParticleRotation);
+            GLsizei offset = sizeof(ParticleRotation::axisOfRotation);
+            glVertexAttribPointer(ATTRIBUTE_SLOT_2, 1, GL_FLOAT, GL_FALSE, stride,
+                                  reinterpret_cast<const GLvoid *>(offset));
+        }
+        CHECK_GL_ERRORS;
     }
+}
+
+
+//---------------------------------------------------------------------------------------
+void ParticleSystemImpl::setStaticUniformData()
+{
+    const glm::vec3 centerOfRotations{0.0f, 0.0f, -6.0f};
+    
+    m_shaderProgram_TFUpdate.enable();
+    glUniform3fv(m_uniformLocations.centerOfRotation, 1, &centerOfRotations[0]);
     
     CHECK_GL_ERRORS;
 }
+
 
 //---------------------------------------------------------------------------------------
 void ParticleSystem::update (
@@ -168,10 +265,19 @@ void ParticleSystem::update (
 
 
 //---------------------------------------------------------------------------------------
+void ParticleSystemImpl::updateUniforms (
+    double secondsSinceLastUpdate
+) {
+    glUniform1f(m_uniformLocations.deltaTime, secondsSinceLastUpdate);
+}
+
+//---------------------------------------------------------------------------------------
 void ParticleSystemImpl::update (
     double secondsSinceLastUpdate
 ) {
     m_shaderProgram_TFUpdate.enable();
+    updateUniforms(secondsSinceLastUpdate);
+    
     glBindVertexArray(m_vao_TFSource);
     
     // Prevent rasterization
@@ -211,7 +317,9 @@ uint ParticleSystem::numParticles() const {
 //---------------------------------------------------------------------------------------
 GLuint ParticleSystem::particlePositionsVbo () const
 {
-    return impl->m_TFBuffers.destVbo;
+    // After calling ParticleSystem::update(), the transform feedback destination buffer
+    // is swapped with the transform feedback source buffer.
+    return impl->m_TFBuffers.sourceVbo;
 }
 
 

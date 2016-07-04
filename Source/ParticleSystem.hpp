@@ -13,7 +13,8 @@ class ParticleSystemImpl;
 class ParticleSystem {
 public:
     ParticleSystem (
-        const AssetDirectory & assetDirectory
+        const AssetDirectory & assetDirectory,
+        uint numParticles
     );
     
     ~ParticleSystem();

@@ -2,9 +2,9 @@
 // CubeVS.glsl
 //
 #version 300 es
-#define ATTRIBUTE_POSITION  0
-#define ATTRIBUTE_NORMAL    1
-#define ATTRIBUTE_INSTANCE_POS 3
+#define ATTRIBUTE_POSITION    0
+#define ATTRIBUTE_NORMAL      1
+#define ATTRIBUTE_INSTANCE_0  3
 
 
 layout(std140)
@@ -17,7 +17,7 @@ uniform Transforms {
 
 layout(location = ATTRIBUTE_POSITION) in vec3 position;
 layout(location = ATTRIBUTE_NORMAL) in vec3 normal;
-layout(location = ATTRIBUTE_INSTANCE_POS) in vec3 instancePos;
+layout(location = ATTRIBUTE_INSTANCE_0) in vec3 instancePos;
 
 out VsOutFsIn {
     vec4 position;
