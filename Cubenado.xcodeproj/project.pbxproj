@@ -199,11 +199,11 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0C233CE11D27875300977B5F /* TFUpdateFrag.glsl in Resources */,
 				0CEB671F1D247DFA00A69E9A /* LaunchScreen.storyboard in Resources */,
+				0C233CD71D2754FC00977B5F /* TFUpdate.glsl in Resources */,
+				0C233CE11D27875300977B5F /* TFUpdateFrag.glsl in Resources */,
 				0CE3D2B61D248EEB00FFB2B5 /* CubeFS.glsl in Resources */,
 				0CE3D2B71D248EEB00FFB2B5 /* CubeVS.glsl in Resources */,
-				0C233CD71D2754FC00977B5F /* TFUpdate.glsl in Resources */,
 				EF669886CA79788451A32520 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
