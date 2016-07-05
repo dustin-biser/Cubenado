@@ -7,6 +7,9 @@
 #import "CubenadoRenderer.h"
 
 
+#define MIN_NUMBER_OF_CUBES 10
+#define MAX_NUMBER_OF_CUBES 10000
+
 
 @interface ViewController ()
 
@@ -16,7 +19,16 @@
 
 - (void) setupSliderForCubeRandomness;
 
-- (void)sliderActionNumCubes:(id)sender forEvent:(UIEvent*)event;
+- (void) sliderActionNumCubes:(id)sender forEvent:(UIEvent*)event;
+
+- (void) sliderActionCubeRandomness:(id)sender forEvent:(UIEvent*)event;
+
+- (void) layoutUIControls;
+
+
+- (NSString *) constructLabelTextForNumCubesLabel;
+
+- (NSString *) constructLabelTextForCubeRandomnessLabel;
 
 @end
 
@@ -28,6 +40,8 @@
     // Slider UI Controls
     UISlider * _slider_numCubes;
     UISlider * _slider_cubeRandomness;
+    UILabel * _label_forSliderNumCubes;
+    UILabel * _label_forSliderCubeRandomness;
     
     CubenadoRenderer * _cubenadoRenderer;
 }
@@ -77,8 +91,8 @@
     
     
     [self setupSliderForNumCubes];
-    
     [self setupSliderForCubeRandomness];
+    [self layoutUIControls];
 }
 
 
@@ -94,39 +108,36 @@
                forControlEvents:UIControlEventValueChanged];
     
     [_slider_numCubes setBackgroundColor:[UIColor clearColor]];
-    _slider_numCubes.minimumValue = 0.0;
-    _slider_numCubes.maximumValue = 1.0;
+    _slider_numCubes.minimumValue = MIN_NUMBER_OF_CUBES;
+    _slider_numCubes.maximumValue = MAX_NUMBER_OF_CUBES;
     _slider_numCubes.continuous = YES;
-    _slider_numCubes.value = 0.5;
+    _slider_numCubes.value = (MAX_NUMBER_OF_CUBES - MIN_NUMBER_OF_CUBES) * 0.2f;
     
-    _slider_numCubes.translatesAutoresizingMaskIntoConstraints = NO;
-    
-    auto viewMargins = self.view.layoutMarginsGuide;
-    CGSize viewFrameSize = self.view.frame.size;
-    
-    // Pin the leading edge of slider to viewMargin's leading edge.
+    //-- Label for slider:
     {
-        CGFloat constantValue = (viewFrameSize.width * 0.05f);
-        auto anchor = viewMargins.leadingAnchor;
-        [_slider_numCubes.leadingAnchor constraintEqualToAnchor:anchor
-                                                             constant:constantValue].active = YES;
+        _label_forSliderNumCubes = [[UILabel alloc] initWithFrame:frame];
+        [self.view addSubview:_label_forSliderNumCubes];
+        
+        _label_forSliderNumCubes.text = [self constructLabelTextForNumCubesLabel];
+        
+        _label_forSliderNumCubes.textAlignment = NSTextAlignmentLeft;
     }
-    
-    // Pin the trailing edge of slider to viewMargin's trailing edge.
-    {
-        CGFloat constantValue = -(viewFrameSize.width * 0.05f);
-        auto anchor = viewMargins.trailingAnchor;
-        [_slider_numCubes.trailingAnchor constraintEqualToAnchor:anchor
-                                                              constant:constantValue].active = YES;
-    }
-    
-    // Pin bottom edge of slider to parent view's bottom edge.
-    {
-        CGFloat constantValue = -(viewFrameSize.height* 0.15f);
-        auto anchor = viewMargins.bottomAnchor;
-        [_slider_numCubes.bottomAnchor constraintEqualToAnchor:anchor
-                                                            constant:constantValue].active = YES;
-    }
+}
+
+
+//---------------------------------------------------------------------------------------
+- (NSString *) constructLabelTextForNumCubesLabel
+{
+    uint numCubes = static_cast<uint>(_slider_numCubes.value);
+    return [NSString stringWithFormat:@"Number of Cubes: %d", numCubes];
+}
+
+
+//---------------------------------------------------------------------------------------
+- (NSString *) constructLabelTextForCubeRandomnessLabel
+{
+    float value = _slider_cubeRandomness.value * 100.0f;
+    return [NSString stringWithFormat:@"Cube Randomness: %.1f%%", value];
 }
 
 
@@ -145,45 +156,82 @@
     _slider_cubeRandomness.minimumValue = 0.0;
     _slider_cubeRandomness.maximumValue = 1.0;
     _slider_cubeRandomness.continuous = YES;
-    _slider_cubeRandomness.value = 0.0;
+    _slider_cubeRandomness.value = 0.2f;
     
+    //-- Label for slider:
+    {
+        _label_forSliderCubeRandomness = [[UILabel alloc] initWithFrame:frame];
+        [self.view addSubview:_label_forSliderCubeRandomness];
+        
+        _label_forSliderCubeRandomness.text =
+            [self constructLabelTextForCubeRandomnessLabel];
+        
+        _label_forSliderCubeRandomness.textAlignment = NSTextAlignmentLeft;
+    }
+}
+
+
+//---------------------------------------------------------------------------------------
+- (void) layoutUIControls
+{
+    
+    // Disable autolayout contrains
+    _slider_numCubes.translatesAutoresizingMaskIntoConstraints = NO;
     _slider_cubeRandomness.translatesAutoresizingMaskIntoConstraints = NO;
+    _label_forSliderNumCubes.translatesAutoresizingMaskIntoConstraints = NO;
+    _label_forSliderCubeRandomness.translatesAutoresizingMaskIntoConstraints = NO;
     
     auto viewMargins = self.view.layoutMarginsGuide;
     CGSize viewFrameSize = self.view.frame.size;
     
+    UISlider * slider;
+    UILabel * label;
     
-    // Pin the leading edge of slider to viewMargin's leading edge.
-    {
-        CGFloat constantValue = (viewFrameSize.width * 0.05f);
-        auto anchor = viewMargins.leadingAnchor;
-        [_slider_cubeRandomness.leadingAnchor constraintEqualToAnchor:anchor
-                                                             constant:constantValue].active = YES;
-    }
+    const CGFloat verticalPadding = -viewFrameSize.height * 0.01f;
+    const CGFloat horizontalLeftPadding = viewFrameSize.width * 0.01f;
+    const CGFloat horizontalRightPadding = -horizontalLeftPadding;
     
-    // Pin the trailing edge of slider to viewMargin's trailing edge.
-    {
-        CGFloat constantValue = -(viewFrameSize.width * 0.05f);
-        auto anchor = viewMargins.trailingAnchor;
-        [_slider_cubeRandomness.trailingAnchor constraintEqualToAnchor:anchor
-                                                              constant:constantValue].active = YES;
-    }
+    //-- Layout UISlider for cube randomness:
+    slider = _slider_cubeRandomness;
+    [slider.bottomAnchor constraintEqualToAnchor:viewMargins.bottomAnchor
+                                        constant:verticalPadding].active = YES;
+    [slider.leadingAnchor constraintEqualToAnchor:viewMargins.leadingAnchor
+                                         constant:horizontalLeftPadding].active = YES;
+    [slider.trailingAnchor constraintEqualToAnchor:viewMargins.trailingAnchor
+                                           constant:horizontalRightPadding].active = YES;
     
-    // Pin bottom edge of slider to parent view's bottom edge.
-    {
-        CGFloat constantValue = -(viewFrameSize.height* 0.05f);
-        auto anchor = viewMargins.bottomAnchor;
-        [_slider_cubeRandomness.bottomAnchor constraintEqualToAnchor:anchor
-                                                            constant:constantValue].active = YES;
-    }
+    //-- Layout UILable for cube randomness:
+    label = _label_forSliderCubeRandomness;
+    [label.bottomAnchor constraintEqualToAnchor:_slider_cubeRandomness.topAnchor
+                                       constant:0].active = YES;
+    [label.leadingAnchor constraintEqualToAnchor:viewMargins.leadingAnchor
+                                       constant:horizontalLeftPadding].active = YES;
+    
+    //-- Layout UISlider for num cubes:
+    slider = _slider_numCubes;
+    [slider.bottomAnchor constraintEqualToAnchor:_label_forSliderCubeRandomness.topAnchor
+                                        constant:verticalPadding].active = YES;
+    [slider.leadingAnchor constraintEqualToAnchor:viewMargins.leadingAnchor
+                                         constant:horizontalLeftPadding].active = YES;
+    [slider.trailingAnchor constraintEqualToAnchor:viewMargins.trailingAnchor
+                                          constant:horizontalRightPadding].active = YES;
+    
+    //-- Layout UILabel for num cubes:
+    label = _label_forSliderNumCubes;
+    [label.bottomAnchor constraintEqualToAnchor:_slider_numCubes.topAnchor
+                                       constant:0].active = YES;
+    [label.leadingAnchor constraintEqualToAnchor:viewMargins.leadingAnchor
+                                       constant:horizontalLeftPadding].active = YES;
+    
 }
+
 
 
 //---------------------------------------------------------------------------------------
 - (void)sliderActionNumCubes:(id)sender forEvent:(UIEvent*)event
 {
     if ([sender isMemberOfClass:[UISlider class]])  {
-        NSLog(@"Slider-NumCubes: %f", _slider_numCubes.value);
+        _label_forSliderNumCubes.text = [self constructLabelTextForNumCubesLabel];
     }
 }
 
@@ -192,7 +240,7 @@
 - (void)sliderActionCubeRandomness:(id)sender forEvent:(UIEvent*)event
 {
     if ([sender isMemberOfClass:[UISlider class]])  {
-        NSLog(@"Slider-CubeRandomness: %f", _slider_cubeRandomness.value);
+        _label_forSliderCubeRandomness.text = [self constructLabelTextForCubeRandomnessLabel];
     }
 }
 
