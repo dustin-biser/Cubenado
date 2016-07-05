@@ -102,18 +102,31 @@
     _slider_numCubes.translatesAutoresizingMaskIntoConstraints = NO;
     
     auto viewMargins = self.view.layoutMarginsGuide;
+    CGSize viewFrameSize = self.view.frame.size;
     
-    // Pin the leading edge of slider to viewMargin's leading edge
-    [_slider_numCubes.leadingAnchor constraintEqualToAnchor:viewMargins.leadingAnchor].active = YES;
+    // Pin the leading edge of slider to viewMargin's leading edge.
+    {
+        CGFloat constantValue = (viewFrameSize.width * 0.05f);
+        auto anchor = viewMargins.leadingAnchor;
+        [_slider_numCubes.leadingAnchor constraintEqualToAnchor:anchor
+                                                             constant:constantValue].active = YES;
+    }
     
-    // Pin the trailing edge of slider to viewMargin's trailing edge
-    [_slider_numCubes.trailingAnchor constraintEqualToAnchor:viewMargins.trailingAnchor].active = YES;
+    // Pin the trailing edge of slider to viewMargin's trailing edge.
+    {
+        CGFloat constantValue = -(viewFrameSize.width * 0.05f);
+        auto anchor = viewMargins.trailingAnchor;
+        [_slider_numCubes.trailingAnchor constraintEqualToAnchor:anchor
+                                                              constant:constantValue].active = YES;
+    }
     
-    // Offset slider's bottom anchor by 15% from parent view's bottom anchor.
-    CGFloat frameHeight = self.view.frame.size.height;
-    CGFloat constantValue = -(frameHeight * 0.15f);
-    [_slider_numCubes.bottomAnchor constraintEqualToAnchor:viewMargins.bottomAnchor
-                                                  constant:constantValue].active = YES;
+    // Pin bottom edge of slider to parent view's bottom edge.
+    {
+        CGFloat constantValue = -(viewFrameSize.height* 0.15f);
+        auto anchor = viewMargins.bottomAnchor;
+        [_slider_numCubes.bottomAnchor constraintEqualToAnchor:anchor
+                                                            constant:constantValue].active = YES;
+    }
 }
 
 
@@ -137,23 +150,28 @@
     _slider_cubeRandomness.translatesAutoresizingMaskIntoConstraints = NO;
     
     auto viewMargins = self.view.layoutMarginsGuide;
+    CGSize viewFrameSize = self.view.frame.size;
     
-    // Pin the leading edge of slider to viewMargin's leading edge
+    
+    // Pin the leading edge of slider to viewMargin's leading edge.
     {
+        CGFloat constantValue = (viewFrameSize.width * 0.05f);
         auto anchor = viewMargins.leadingAnchor;
-        [_slider_cubeRandomness.leadingAnchor constraintEqualToAnchor:anchor].active = YES;
+        [_slider_cubeRandomness.leadingAnchor constraintEqualToAnchor:anchor
+                                                             constant:constantValue].active = YES;
     }
     
-    // Pin the trailing edge of slider to viewMargin's trailing edge
+    // Pin the trailing edge of slider to viewMargin's trailing edge.
     {
+        CGFloat constantValue = -(viewFrameSize.width * 0.05f);
         auto anchor = viewMargins.trailingAnchor;
-        [_slider_cubeRandomness.trailingAnchor constraintEqualToAnchor:anchor].active = YES;
+        [_slider_cubeRandomness.trailingAnchor constraintEqualToAnchor:anchor
+                                                              constant:constantValue].active = YES;
     }
     
-    // Offset slider's bottom anchor by 5% from parent view's bottom anchor.
+    // Pin bottom edge of slider to parent view's bottom edge.
     {
-        CGFloat frameHeight = self.view.frame.size.height;
-        CGFloat constantValue = -(frameHeight * 0.05f);
+        CGFloat constantValue = -(viewFrameSize.height* 0.05f);
         auto anchor = viewMargins.bottomAnchor;
         [_slider_cubeRandomness.bottomAnchor constraintEqualToAnchor:anchor
                                                             constant:constantValue].active = YES;
@@ -177,6 +195,7 @@
         NSLog(@"Slider-CubeRandomness: %f", _slider_cubeRandomness.value);
     }
 }
+
 
 //---------------------------------------------------------------------------------------
 // GLKViewController update method
