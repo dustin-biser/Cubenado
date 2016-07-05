@@ -11,6 +11,7 @@
 #define MAX_NUMBER_OF_CUBES 10000
 
 
+
 @interface ViewController ()
 
 @property (strong, nonatomic) EAGLContext * eaglContext;
@@ -26,9 +27,12 @@
 - (void) layoutUIControls;
 
 
-- (NSString *) constructLabelTextForNumCubesLabel;
 
-- (NSString *) constructLabelTextForCubeRandomnessLabel;
+- (UIFont *) labelFont;
+
+- (NSAttributedString *) labelTextForNumCubesLabel;
+
+- (NSAttributedString *) labelTextForCubeRandomnessLabel;
 
 @end
 
@@ -79,7 +83,7 @@
     self.preferredFramesPerSecond = 60;
     
     
-    // Calculate screen dimensions now, and use as FramebufferSize.
+    // Calculate FramebufferSize now, based on screen dimensions.
     // The GLKView's drawabale surface is not gauranteed to be loaded until just
     // before [GLKViewController glkView:drawInRect:] is called.
     FramebufferSize framebufferSize;
@@ -114,30 +118,11 @@
     _slider_numCubes.value = (MAX_NUMBER_OF_CUBES - MIN_NUMBER_OF_CUBES) * 0.2f;
     
     //-- Label for slider:
-    {
-        _label_forSliderNumCubes = [[UILabel alloc] initWithFrame:frame];
-        [self.view addSubview:_label_forSliderNumCubes];
-        
-        _label_forSliderNumCubes.text = [self constructLabelTextForNumCubesLabel];
-        
-        _label_forSliderNumCubes.textAlignment = NSTextAlignmentLeft;
-    }
-}
-
-
-//---------------------------------------------------------------------------------------
-- (NSString *) constructLabelTextForNumCubesLabel
-{
-    uint numCubes = static_cast<uint>(_slider_numCubes.value);
-    return [NSString stringWithFormat:@"Number of Cubes: %d", numCubes];
-}
-
-
-//---------------------------------------------------------------------------------------
-- (NSString *) constructLabelTextForCubeRandomnessLabel
-{
-    float value = _slider_cubeRandomness.value * 100.0f;
-    return [NSString stringWithFormat:@"Cube Randomness: %.1f%%", value];
+    _label_forSliderNumCubes = [[UILabel alloc] initWithFrame:frame];
+    [self.view addSubview:_label_forSliderNumCubes];
+    
+    _label_forSliderNumCubes.textAlignment = NSTextAlignmentLeft;
+    _label_forSliderNumCubes.attributedText = [self labelTextForNumCubesLabel];
 }
 
 
@@ -158,16 +143,43 @@
     _slider_cubeRandomness.continuous = YES;
     _slider_cubeRandomness.value = 0.2f;
     
+    
     //-- Label for slider:
-    {
-        _label_forSliderCubeRandomness = [[UILabel alloc] initWithFrame:frame];
-        [self.view addSubview:_label_forSliderCubeRandomness];
-        
-        _label_forSliderCubeRandomness.text =
-            [self constructLabelTextForCubeRandomnessLabel];
-        
-        _label_forSliderCubeRandomness.textAlignment = NSTextAlignmentLeft;
-    }
+    _label_forSliderCubeRandomness = [[UILabel alloc] initWithFrame:frame];
+    [self.view addSubview:_label_forSliderCubeRandomness];
+    
+    _label_forSliderCubeRandomness.textAlignment = NSTextAlignmentLeft;
+    _label_forSliderCubeRandomness.attributedText = [self labelTextForCubeRandomnessLabel];
+}
+
+
+//---------------------------------------------------------------------------------------
+- (NSAttributedString *) labelTextForNumCubesLabel
+{
+    uint numCubes = static_cast<uint>(_slider_numCubes.value);
+    NSString * string = [NSString stringWithFormat:@"Number of Cubes: %d", numCubes];
+    
+    return [[NSAttributedString alloc] initWithString:string
+                                           attributes:@{ NSFontAttributeName:[self labelFont] }];
+}
+
+
+//---------------------------------------------------------------------------------------
+- (NSAttributedString *) labelTextForCubeRandomnessLabel
+{
+    
+    float value = _slider_cubeRandomness.value * 100.0f;
+    NSString * string = [NSString stringWithFormat:@"Cube Randomness: %.1f%%", value];
+    
+    return [[NSAttributedString alloc] initWithString:string
+                                           attributes:@{ NSFontAttributeName:[self labelFont] }];
+}
+
+
+//---------------------------------------------------------------------------------------
+- (UIFont *) labelFont
+{
+    return [UIFont fontWithName:@"Helvetica-Light" size:14];
 }
 
 
@@ -222,7 +234,6 @@
                                        constant:0].active = YES;
     [label.leadingAnchor constraintEqualToAnchor:viewMargins.leadingAnchor
                                        constant:horizontalLeftPadding].active = YES;
-    
 }
 
 
@@ -231,7 +242,7 @@
 - (void)sliderActionNumCubes:(id)sender forEvent:(UIEvent*)event
 {
     if ([sender isMemberOfClass:[UISlider class]])  {
-        _label_forSliderNumCubes.text = [self constructLabelTextForNumCubesLabel];
+        _label_forSliderNumCubes.attributedText = [self labelTextForNumCubesLabel];
     }
 }
 
@@ -240,7 +251,7 @@
 - (void)sliderActionCubeRandomness:(id)sender forEvent:(UIEvent*)event
 {
     if ([sender isMemberOfClass:[UISlider class]])  {
-        _label_forSliderCubeRandomness.text = [self constructLabelTextForCubeRandomnessLabel];
+        _label_forSliderCubeRandomness.attributedText = [self labelTextForCubeRandomnessLabel];
     }
 }
 

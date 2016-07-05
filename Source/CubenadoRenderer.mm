@@ -502,7 +502,8 @@ typedef GLushort Index;
     glBindBuffer(GL_UNIFORM_BUFFER, _ubo);
     
     GLuint numInstance = _particleSystem->numParticles();
-    glDrawElementsInstanced(GL_TRIANGLES, _numCubeIndices, GL_UNSIGNED_SHORT, nullptr, numInstance);
+    glDrawElementsInstanced(GL_TRIANGLES, _numCubeIndices, GL_UNSIGNED_SHORT, nullptr,
+                            numInstance);
                             
     CHECK_GL_ERRORS;
 }
