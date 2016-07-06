@@ -62,6 +62,9 @@ typedef GLushort Index;
 
 @interface CubenadoRenderer()
 
+- (void) initializeRendererWith: (uint)numCubes
+                    andMaxCubes: (uint)maxCubes;
+
 - (void) buildAssetDirectory;
 
 - (void) loadShaders;
@@ -74,8 +77,10 @@ typedef GLushort Index;
 
 - (void) setUBOBindings;
 
-- (void) setParticlePositionVboAttribMapping;
+- (void) setParticlePositionVboAttribMapping: (ParticleSystem *)particleSystem
+                                     withVao: (GLuint)vao;
 
+- (void) setViewportIfFramebuferSizeChanged: (FramebufferSize)framebufferSize;
 
 @end // @interface CubenadoRenderer
     
@@ -107,20 +112,20 @@ typedef GLushort Index;
     Material _material;
     GLint _uniformBufferDataOffset_Material;
     
-    GLsync _fenceParticleUpdate;
-
 }
 
 
 //---------------------------------------------------------------------------------------
-- (instancetype)initWithFramebufferSize:(FramebufferSize)framebufferSize
+- (instancetype)initWithFramebufferSize: (FramebufferSize)framebufferSize
+                               numCubes: (uint) numCubes
+                               maxCubes: (uint) maxCubes
 {
     self = [super init];
     if(self) {
         _framebufferSize = framebufferSize;
-        _fenceParticleUpdate = nullptr;
         
-        [self initializeRenderer];
+        [self initializeRendererWith: numCubes
+                         andMaxCubes: maxCubes];
     }
     
     return self;
@@ -128,7 +133,8 @@ typedef GLushort Index;
 
 
 //---------------------------------------------------------------------------------------
-- (void) initializeRenderer
+- (void) initializeRendererWith: (uint)numCubes
+                    andMaxCubes: (uint)maxCubes
 {
     [self buildAssetDirectory];
     
@@ -156,8 +162,11 @@ typedef GLushort Index;
     CHECK_GL_ERRORS;
     
     
-    uint numParticles = 20;
-    _particleSystem = std::make_shared<ParticleSystem>(_assetDirectory, numParticles);
+    const uint numActiveParticles = numCubes;
+    const uint maxParticles = maxCubes;
+    _particleSystem = std::make_shared<ParticleSystem>(_assetDirectory,
+                                                       numActiveParticles,
+                                                       maxParticles);
 }
 
 //---------------------------------------------------------------------------------------
@@ -300,24 +309,6 @@ typedef GLushort Index;
 
 
 //---------------------------------------------------------------------------------------
-- (void)setParticlePositionVboAttribMapping
-{
-    // Instance position data mapping from ParticleSystem VBO to vertex attribute slot
-    glBindVertexArray(_vao_cube);
-    glEnableVertexAttribArray(ATTRIBUTE_INSTANCE_0);
-    
-    glBindBuffer(GL_ARRAY_BUFFER, _particleSystem->particlePositionsVbo());
-    
-    GLint numComponents = _particleSystem->numComponentsPerParticlePosition();
-    glVertexAttribPointer(ATTRIBUTE_INSTANCE_0, numComponents, GL_FLOAT, GL_FALSE, 0, nullptr);
-    
-    // Advance attribute once per instance.
-    glVertexAttribDivisor(ATTRIBUTE_INSTANCE_0, 1);
-    
-    CHECK_GL_ERRORS;
-}
-
-//---------------------------------------------------------------------------------------
 - (void)loadShaders
 {
     //-- Create Cube Shader:
@@ -336,7 +327,7 @@ typedef GLushort Index;
     glm::mat4 projectionMatrix = glm::perspective(glm::radians(fovy), aspect, 0.1f, 100.0f);
     
     glm::mat4 viewMatrix = glm::lookAt (
-        glm::vec3{0.0f, 0.0f, 0.0f},  // eye
+        glm::vec3{0.0f, 0.0f, 5.0f},  // eye
         glm::vec3{0.0f, 0.0f, -1.0f}, // center
         glm::vec3{0.0f, 1.0f, 0.0f}   // up
     );
@@ -412,6 +403,7 @@ typedef GLushort Index;
     // Create Uniform Buffer
     glGenBuffers(1, &_ubo);
     glBindBuffer(GL_UNIFORM_BUFFER, _ubo);
+    // UBO size much account for buffer offset alignment restriction
     _uboBufferSize =  align(sizeofTransforms, uniformBufferOffsetAlignment) +
                       align(sizeofLightSource, uniformBufferOffsetAlignment) +
                       sizeofMaterial;
@@ -476,7 +468,28 @@ typedef GLushort Index;
 
 
 //---------------------------------------------------------------------------------------
-// Call once per frame, before [CubenadoRenderer render].
+- (void) setParticlePositionVboAttribMapping: (ParticleSystem *)particleSystem
+                                     withVao: (GLuint)vao
+{
+    // Instance position data mapping from ParticleSystem VBO to vertex attribute slot
+    glBindVertexArray(vao);
+    glEnableVertexAttribArray(ATTRIBUTE_INSTANCE_0);
+    
+    glBindBuffer(GL_ARRAY_BUFFER, particleSystem->particlePositionsVbo());
+    
+    GLint numComponents = particleSystem->numComponentsPerParticlePosition();
+    glVertexAttribPointer(ATTRIBUTE_INSTANCE_0, numComponents, GL_FLOAT, GL_FALSE, 0, nullptr);
+    
+    // Advance attribute once per instance.
+    glVertexAttribDivisor(ATTRIBUTE_INSTANCE_0, 1);
+    
+    CHECK_GL_ERRORS;
+}
+
+
+
+//---------------------------------------------------------------------------------------
+// Call once per frame, before CubenadoRenderer:renderWithFrameBuffer:.
 - (void) update:(NSTimeInterval)timeSinceLastUpdate;
 {
     [self updateUniforms];
@@ -486,26 +499,46 @@ typedef GLushort Index;
 
 
 //---------------------------------------------------------------------------------------
-// Call once per frame, after [CubenadoRenderer update].
-- (void)render: (FramebufferSize)framebufferSize
+- (void) setViewportIfFramebuferSizeChanged: (FramebufferSize)framebufferSize
 {
-    _framebufferSize = framebufferSize;
-    glViewport(0, 0, _framebufferSize.width, _framebufferSize.height);
+    const bool widthNotEquath(_framebufferSize.width != framebufferSize.width);
+    const bool heightNotEquath(_framebufferSize.height != framebufferSize.height);
+    
+    if(widthNotEquath || heightNotEquath) {
+        _framebufferSize = framebufferSize;
+        glViewport(0, 0, _framebufferSize.width, _framebufferSize.height);
+    }
+}
+
+
+//---------------------------------------------------------------------------------------
+// Call once per frame, after CubenadoRenderer:update:.
+- (void) renderwithFramebufferSize: (FramebufferSize)framebufferSize
+{
+    [self setViewportIfFramebuferSizeChanged: framebufferSize];
     
     // Clear the framebuffer
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
-    [self setParticlePositionVboAttribMapping];
+    [self setParticlePositionVboAttribMapping: _particleSystem.get()
+                                      withVao: _vao_cube];
     
     _shaderProgram_Cube.enable();
     glBindVertexArray(_vao_cube);
     glBindBuffer(GL_UNIFORM_BUFFER, _ubo);
     
-    GLuint numInstance = _particleSystem->numParticles();
+    const GLuint numInstances = _particleSystem->numActiveParticles();
     glDrawElementsInstanced(GL_TRIANGLES, _numCubeIndices, GL_UNSIGNED_SHORT, nullptr,
-                            numInstance);
+                            numInstances);
                             
     CHECK_GL_ERRORS;
+}
+
+
+//---------------------------------------------------------------------------------------
+- (void) setNumCubes: (uint)numCubes
+{
+    _particleSystem->setNumActiveParticles(numCubes);
 }
 
 

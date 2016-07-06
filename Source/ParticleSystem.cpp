@@ -7,6 +7,9 @@
 #import <vector>
 using std::vector;
 
+#import <algorithm>
+using std::min;
+
 #import <glm/glm.hpp>
 using glm::vec3;
 
@@ -32,7 +35,8 @@ private:
     
     
 //-- Members:
-    uint m_numParticles;
+    uint m_numActiveParticles;
+    uint m_maxParticles;
     
     const AssetDirectory & m_assetDirectory;
     
@@ -62,7 +66,8 @@ private:
 //-- Methods:
     ParticleSystemImpl (
         const AssetDirectory & assetDirectory,
-        uint numParticles
+        uint numActiveParticles,
+        uint maxParticles
     );
     
     void loadShaders();
@@ -75,8 +80,8 @@ private:
     
     void setStaticUniformData();
     
-    void setNumParticles (
-        uint numParticles
+    void setNumActiveParticles (
+        uint numActiveParticles
     );
     
     void update (
@@ -93,10 +98,12 @@ private:
 //---------------------------------------------------------------------------------------
 ParticleSystemImpl::ParticleSystemImpl (
     const AssetDirectory & assetDirectory,
-    uint numParticles
+    uint numActiveParticles,
+    uint maxParticles
 )
     : m_assetDirectory(assetDirectory),
-      m_numParticles(numParticles)
+      m_numActiveParticles(numActiveParticles),
+      m_maxParticles(maxParticles)
 {
     loadShaders();
     
@@ -112,9 +119,10 @@ ParticleSystemImpl::ParticleSystemImpl (
 //---------------------------------------------------------------------------------------
 ParticleSystem::ParticleSystem (
     const AssetDirectory & assetDirectory,
-    uint numParticles
+    uint numActiveParticles,
+    uint maxParticles
 ) {
-    impl = new ParticleSystemImpl(assetDirectory, numParticles);
+    impl = new ParticleSystemImpl(assetDirectory, numActiveParticles, maxParticles);
 }
 
 //---------------------------------------------------------------------------------------
@@ -153,11 +161,12 @@ void ParticleSystemImpl::loadShaders() {
 //---------------------------------------------------------------------------------------
 void ParticleSystemImpl::loadTransformFeedbackPositionBuffers()
 {
-    std::vector<glm::vec3> positionData(m_numParticles);
+    // Allocate enough space for maxParticles
+    std::vector<glm::vec3> positionData(m_maxParticles);
     
     const glm::vec3 startPos(0.0f, -2.0f, -8.0f);
     const glm::vec3 delta(0.0f, 0.2f, -0.87f);
-    for(int i(0); i < m_numParticles; ++i) {
+    for(int i(0); i < m_maxParticles; ++i) {
         glm::vec3 pos = startPos + float(i)*delta;
         positionData[i] = pos;
     }
@@ -181,11 +190,12 @@ void ParticleSystemImpl::loadTransformFeedbackPositionBuffers()
 //---------------------------------------------------------------------------------------
 void ParticleSystemImpl::loadParticleRotationBuffers()
 {
-    std::vector<ParticleRotation> particleRotations(m_numParticles);
+    // Allocate enough space for maxParticles
+    std::vector<ParticleRotation> particleRotations(m_maxParticles);
     
     const glm::vec3 axis= glm::vec3(0.0f, 1.0f, 0.0f);
     const float rotVelocity = 10.5f;
-    for(int i(0); i < m_numParticles; ++i) {
+    for(int i(0); i < m_maxParticles; ++i) {
         ParticleRotation data;
         data.axisOfRotation = axis + glm::vec3(i*0.01f, 0.0f, 0.0f);
         data.rotionalVelocity = rotVelocity - i*0.2f;
@@ -300,7 +310,7 @@ void ParticleSystemImpl::update (
     glBindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, bindingIndex, m_TFBuffers.destVbo);
     
     glBeginTransformFeedback(GL_POINTS);
-        glDrawArrays(GL_POINTS, 0, m_numParticles);
+        glDrawArrays(GL_POINTS, 0, m_numActiveParticles);
     glEndTransformFeedback();
     
     
@@ -314,28 +324,25 @@ void ParticleSystemImpl::update (
 
 
 //---------------------------------------------------------------------------------------
-void ParticleSystemImpl::setNumParticles (
-    uint numParticles
+void ParticleSystemImpl::setNumActiveParticles (
+    uint numActiveParticles
 ) {
-    if(numParticles != m_numParticles) {
-        //TODO: Reallocate VBO buffers if numParticles changes
-    }
-        
-    m_numParticles = numParticles;
+    // Prevent setting numActiveParticles to greater than maxParticles.
+    m_numActiveParticles = std::min(numActiveParticles, m_maxParticles);
 }
 
 
 //---------------------------------------------------------------------------------------
-void ParticleSystem::setNumParticles (
-    uint numParticles
+void ParticleSystem::setNumActiveParticles (
+    uint numActiveParticles
 ) {
-    impl->setNumParticles(numParticles);
+    impl->setNumActiveParticles(numActiveParticles);
 }
 
 
 //---------------------------------------------------------------------------------------
-uint ParticleSystem::numParticles() const {
-    return impl->m_numParticles;
+uint ParticleSystem::numActiveParticles() const {
+    return impl->m_numActiveParticles;
 }
 
 

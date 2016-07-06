@@ -10,6 +10,9 @@
 #define MIN_NUMBER_OF_CUBES 10
 #define MAX_NUMBER_OF_CUBES 10000
 
+#define NUMBER_OF_CUBES_START 200
+#define CUBE_RANDOMNESS_START 0.1
+
 
 
 @interface ViewController ()
@@ -79,24 +82,29 @@
         _glkView.drawableStencilFormat = GLKViewDrawableStencilFormat8;
     }
     
-    
     self.preferredFramesPerSecond = 60;
+    
+    [self setupSliderForNumCubes];
+    
+    [self setupSliderForCubeRandomness];
+    
+    [self layoutUIControls];
     
     
     // Calculate FramebufferSize now, based on screen dimensions.
     // The GLKView's drawabale surface is not gauranteed to be loaded until just
     // before [GLKViewController glkView:drawInRect:] is called.
-    FramebufferSize framebufferSize;
+    FramebufferSize approxframebufferSize;
     CGSize frameSize = _glkView.frame.size;
-    framebufferSize.width = static_cast<GLint>(frameSize.width);
-    framebufferSize.height = static_cast<GLint>(frameSize.height);
+    approxframebufferSize.width = static_cast<GLint>(frameSize.width);
+    approxframebufferSize.height = static_cast<GLint>(frameSize.height);
     
-    _cubenadoRenderer = [[CubenadoRenderer alloc] initWithFramebufferSize:framebufferSize];
-    
-    
-    [self setupSliderForNumCubes];
-    [self setupSliderForCubeRandomness];
-    [self layoutUIControls];
+    // Initialize CubenadoRender with number of cubes from UI Slider
+    const uint numCubes = static_cast<uint>(_slider_numCubes.value);
+    _cubenadoRenderer = [[CubenadoRenderer alloc] initWithFramebufferSize:approxframebufferSize
+                                                                 numCubes:numCubes
+                                                                 maxCubes:MAX_NUMBER_OF_CUBES];
+ 
 }
 
 
@@ -115,7 +123,7 @@
     _slider_numCubes.minimumValue = MIN_NUMBER_OF_CUBES;
     _slider_numCubes.maximumValue = MAX_NUMBER_OF_CUBES;
     _slider_numCubes.continuous = YES;
-    _slider_numCubes.value = (MAX_NUMBER_OF_CUBES - MIN_NUMBER_OF_CUBES) * 0.2f;
+    _slider_numCubes.value = NUMBER_OF_CUBES_START;
     
     //-- Label for slider:
     _label_forSliderNumCubes = [[UILabel alloc] initWithFrame:frame];
@@ -141,7 +149,7 @@
     _slider_cubeRandomness.minimumValue = 0.0;
     _slider_cubeRandomness.maximumValue = 1.0;
     _slider_cubeRandomness.continuous = YES;
-    _slider_cubeRandomness.value = 0.2f;
+    _slider_cubeRandomness.value = CUBE_RANDOMNESS_START;
     
     
     //-- Label for slider:
@@ -187,7 +195,7 @@
 - (void) layoutUIControls
 {
     
-    // Disable autolayout contrains
+    // Disable autolayout contraints
     _slider_numCubes.translatesAutoresizingMaskIntoConstraints = NO;
     _slider_cubeRandomness.translatesAutoresizingMaskIntoConstraints = NO;
     _label_forSliderNumCubes.translatesAutoresizingMaskIntoConstraints = NO;
@@ -239,15 +247,19 @@
 
 
 //---------------------------------------------------------------------------------------
+// Callback action for NumCubes Slider
 - (void)sliderActionNumCubes:(id)sender forEvent:(UIEvent*)event
 {
     if ([sender isMemberOfClass:[UISlider class]])  {
         _label_forSliderNumCubes.attributedText = [self labelTextForNumCubesLabel];
+        const uint numCubes = static_cast<uint>(_slider_numCubes.value);
+        [_cubenadoRenderer setNumCubes: numCubes];
     }
 }
 
 
 //---------------------------------------------------------------------------------------
+// Callback action for Cube Randomness Slider
 - (void)sliderActionCubeRandomness:(id)sender forEvent:(UIEvent*)event
 {
     if ([sender isMemberOfClass:[UISlider class]])  {
@@ -273,7 +285,7 @@
     framebufferSize.width = static_cast<GLint>(_glkView.drawableWidth);
     framebufferSize.height = static_cast<GLint>(_glkView.drawableHeight);
     
-    [_cubenadoRenderer render: framebufferSize];
+    [_cubenadoRenderer renderwithFramebufferSize: framebufferSize];
 }
 
 

@@ -14,17 +14,20 @@ class ParticleSystem {
 public:
     ParticleSystem (
         const AssetDirectory & assetDirectory,
-        uint numParticles
+        uint numActiveParticles,
+        uint maxParticles
     );
     
     ~ParticleSystem();
     
     
-    void setNumParticles (
-        uint numParticles
+    // Requires numActiveParticles <= maxParticles.
+    void setNumActiveParticles (
+        uint numActiveParticles
     );
     
-    uint numParticles() const;
+    // Query number of active particles.
+    uint numActiveParticles() const;
     
     // Retrieve vertex buffer object for particle position data
     GLuint particlePositionsVbo () const;
@@ -36,6 +39,7 @@ public:
     GLsizei numComponentsPerParticlePosition() const;
     
     
+    // Advance particle system by the given time step.
     void update (
         double secondsSinceLastUpdate
     );
