@@ -64,6 +64,19 @@ vec3 rotate_position (
 
 
 //---------------------------------------------------------------------------------------
+vec3 rotate_position_about_point (
+    vec3 position,
+    vec3 axis,    // Axis of rotation, assumed noralized.
+    float angle,  // Angle of rotation in radians.
+    vec3 point    // Center of rotation.
+) {
+    vec3 newPosition = position - point;
+    newPosition = rotate_position(newPosition, axis, angle);
+    return newPosition + point;
+}
+
+
+//---------------------------------------------------------------------------------------
 // Compute position on Bezier curve, B(t).
 vec3 B (
     float t
@@ -90,38 +103,32 @@ vec3 normalToCurve (
     float t
 ) {
     // Compute tangent to curve B'(t), and next tangent B'(t + epsilon).
-    vec3 tangent0 = B_tangent(t);
-    const float epsilon = 0.001;
-    vec3 tangent1 = B_tangent(t+epsilon);
+    vec3 tangent = B_tangent(t);
     
-    // Axis of rotation.
-    vec3 axis = cross(tangent1, tangent0);
+    vec3 tangent_cross_x = cross(vec3(1.0f, 0.0, 0.0), tangent);
+    vec3 axis = cross(tangent, tangent_cross_x);
     
-    // Rotate B'(t) tangent by 90 degrees and return value.
-    return rotate_position(tangent0, axis, radians(90.0));
+    // Rotate tangent 90 degrees about new axis and return value.
+    return rotate_position(tangent, axis, radians(90.0));
 }
 
 
 //---------------------------------------------------------------------------------------
 void main() {
-    // Compute current parametric distance along curve.
+    // Compute new location on curve.
     float t = clamp(parametricDist + (deltaTime * parametricVelocity), 0.0, 1.0);
     vec3 pointOnCurve = B(t);
     
-//    // Compute axis and angle of rotation
-//    vec3 axisOfRotation = B_tangent(t);
-//    float angle = rotationAngle + (deltaTime * rotationalVelocity);
-//    
-//    vec3 updatedPosition = pointOnCurve + (rotationRadius * normalToCurve(t));
-//    updatedPosition = rotate_position(updatedPosition, axisOfRotation, angle);
-//    
-//    // Outputs
-//    vsOut.position = updatedPosition;
-//    vsOut.parametricDist = t;
-//    vsOut.rotationAngle = angle;
+    // Compute axis and angle of rotation
+    vec3 axisOfRotation = B_tangent(t);
+    float angle = rotationAngle + (deltaTime * rotationalVelocity);
     
-    //TODO: First move particle along curve:
-    vsOut.position = pointOnCurve;
+    
+    vec3 updatedPosition = pointOnCurve + (rotationRadius * normalToCurve(t));
+    updatedPosition = rotate_position_about_point(updatedPosition, axisOfRotation, angle, pointOnCurve);
+    
+    // Outputs
+    vsOut.position = updatedPosition;
     vsOut.parametricDist = t;
-    vsOut.rotationAngle = 0.0f;
+    vsOut.rotationAngle = angle;
 }

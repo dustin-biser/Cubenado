@@ -326,8 +326,10 @@ typedef GLushort Index;
     float aspect = static_cast<float>(_framebufferSize.width) / _framebufferSize.height;
     glm::mat4 projectionMatrix = glm::perspective(glm::radians(fovy), aspect, 0.1f, 100.0f);
     
+    
+    glm::vec3 cameraLocation = {0.0f, 0.0f, 10.0f};
     glm::mat4 viewMatrix = glm::lookAt (
-        glm::vec3{0.0f, 0.0f, 2.0f},  // eye
+        cameraLocation,               // eye
         glm::vec3{0.0f, 0.0f, -1.0f}, // center
         glm::vec3{0.0f, 1.0f, 0.0f}   // up
     );

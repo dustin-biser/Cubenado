@@ -123,10 +123,10 @@ ParticleSystemImpl::ParticleSystemImpl (
     
     setStaticUniformData();
     
-    glm::vec3 p0(0.0f, -3.0f, -5.0f);
-    glm::vec3 p1(1.0f,  0.0f,  -5.0f);
-    glm::vec3 p2(-1.0f, 0.0f, -5.0f);
-    glm::vec3 p3(0.0f, 3.0f,  -5.0f);
+    glm::vec3 p0(0.0f, -8.0f, -10.0f);
+    glm::vec3 p1(1.0f,  0.0f,  -10.0f);
+    glm::vec3 p2(-1.0f, 0.0f, -10.0f);
+    glm::vec3 p3(0.0f, 8.0f,  -10.0f);
     setTornadoCurveFromControlPoints(p0, p1, p2, p3);
 }
 
@@ -165,15 +165,15 @@ void ParticleSystemImpl::loadShaders() {
     {
         m_uniformLocations.basisMatrix =
             glGetUniformLocation(m_shaderProgram_TFUpdate, "basisMatrix");
-//
-//        m_uniformLocations.derivMatrix =
-//            glGetUniformLocation(m_shaderProgram_TFUpdate, "derivMatrix");
-//        
-//        m_uniformLocations.rotationRadius =
-//            glGetUniformLocation(m_shaderProgram_TFUpdate, "rotationRadius");
-//        
-//        m_uniformLocations.rotationalVelocity =
-//            glGetUniformLocation(m_shaderProgram_TFUpdate, "rotationalVelocity");
+
+        m_uniformLocations.derivMatrix =
+            glGetUniformLocation(m_shaderProgram_TFUpdate, "derivMatrix");
+        
+        m_uniformLocations.rotationRadius =
+            glGetUniformLocation(m_shaderProgram_TFUpdate, "rotationRadius");
+        
+        m_uniformLocations.rotationalVelocity =
+            glGetUniformLocation(m_shaderProgram_TFUpdate, "rotationalVelocity");
         
         m_uniformLocations.parametricVelocity =
             glGetUniformLocation(m_shaderProgram_TFUpdate, "parametricVelocity");
@@ -300,14 +300,11 @@ void ParticleSystemImpl::setStaticUniformData()
 {
     m_shaderProgram_TFUpdate.enable();
     
-//    const float rotationRadius = 1.0f;
-//    glUniform1f(m_uniformLocations.rotationRadius, rotationRadius);
-//    
-//    const float rotationalVelocity = 0.8f;
-//    glUniform1f(m_uniformLocations.rotationalVelocity, rotationalVelocity);
+    glUniform1f(m_uniformLocations.rotationRadius, 1.0f);
     
-    const float parametricVelocity = 0.2f;
-    glUniform1f(m_uniformLocations.parametricVelocity, parametricVelocity);
+    glUniform1f(m_uniformLocations.rotationalVelocity, 10.0f);
+    
+    glUniform1f(m_uniformLocations.parametricVelocity, 0.2f);
     
     
     CHECK_GL_ERRORS;
@@ -330,7 +327,7 @@ void ParticleSystemImpl::updateUniforms (
     
     glUniformMatrix4fv(m_uniformLocations.basisMatrix, 1, GL_FALSE, &m_tornadoCurve.basisMatrix[0][0]);
 
-//    glUniformMatrix4fv(m_uniformLocations.derivMatrix, 1, GL_FALSE, &m_tornadoCurve.derivMatrix[0][0]);
+    glUniformMatrix4fv(m_uniformLocations.derivMatrix, 1, GL_FALSE, &m_tornadoCurve.derivMatrix[0][0]);
     
     CHECK_GL_ERRORS;
 }
