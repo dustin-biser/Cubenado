@@ -4,10 +4,19 @@
 
 #include "NumericTypes.h"
 #include "AssetDirectory.hpp"
-
+#import <OpenGLES/ES3/gl.h>
 
 // Forward declaration
 class ParticleSystemImpl;
+
+
+struct VertexAttributeDescriptor
+{
+    GLint numComponents;
+    GLenum type;
+    GLsizei stride;
+    const GLvoid * offset;
+};
 
 
 class ParticleSystem {
@@ -29,14 +38,11 @@ public:
     // Query number of active particles.
     uint numActiveParticles() const;
     
-    // Retrieve vertex buffer object for particle position data
+    // Return vertex attribute layout for interleaved particle position data.
+    VertexAttributeDescriptor getVertexDescriptorForParticlePositions() const;
+    
+    // Returns Vertex Buffer object referencing particle position data.
     GLuint particlePositionsVbo () const;
-    
-    // Retrieve size of each particle position in bytes.
-    GLsizei particlePositionElementSizeInBytes () const;
-    
-    // Retrieve number components per particle position.
-    GLsizei numComponentsPerParticlePosition() const;
     
     
     // Advance particle system by the given time step.

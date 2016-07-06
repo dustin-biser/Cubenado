@@ -327,7 +327,7 @@ typedef GLushort Index;
     glm::mat4 projectionMatrix = glm::perspective(glm::radians(fovy), aspect, 0.1f, 100.0f);
     
     glm::mat4 viewMatrix = glm::lookAt (
-        glm::vec3{0.0f, 0.0f, 5.0f},  // eye
+        glm::vec3{0.0f, 0.0f, 2.0f},  // eye
         glm::vec3{0.0f, 0.0f, -1.0f}, // center
         glm::vec3{0.0f, 1.0f, 0.0f}   // up
     );
@@ -471,14 +471,18 @@ typedef GLushort Index;
 - (void) setParticlePositionVboAttribMapping: (ParticleSystem *)particleSystem
                                      withVao: (GLuint)vao
 {
-    // Instance position data mapping from ParticleSystem VBO to vertex attribute slot
+    // Position data mapping from ParticleSystem VBO to vertex attribute slot
     glBindVertexArray(vao);
     glEnableVertexAttribArray(ATTRIBUTE_INSTANCE_0);
     
     glBindBuffer(GL_ARRAY_BUFFER, particleSystem->particlePositionsVbo());
     
-    GLint numComponents = particleSystem->numComponentsPerParticlePosition();
-    glVertexAttribPointer(ATTRIBUTE_INSTANCE_0, numComponents, GL_FLOAT, GL_FALSE, 0, nullptr);
+    
+    VertexAttributeDescriptor descriptor =
+        particleSystem->getVertexDescriptorForParticlePositions();
+    
+    glVertexAttribPointer(ATTRIBUTE_INSTANCE_0, descriptor.numComponents, descriptor.type,
+                          GL_FALSE, descriptor.stride, descriptor.offset);
     
     // Advance attribute once per instance.
     glVertexAttribDivisor(ATTRIBUTE_INSTANCE_0, 1);

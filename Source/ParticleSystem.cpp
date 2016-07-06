@@ -18,21 +18,9 @@ using glm::vec3;
 #import "VertexAttributeDefines.h"
 
 
-#define NUM_POSITION_COMPONENTS 3
-struct ParticlePosition {
-    float positon[NUM_POSITION_COMPONENTS];
-};
-
-struct ParticleRotation {
-    glm::vec3 axisOfRotation;
-    float rotionalVelocity;
-};
-
-
 class ParticleSystemImpl {
 private:
     friend class ParticleSystem;
-    
     
 //-- Members:
     uint m_numActiveParticles;
@@ -42,13 +30,31 @@ private:
     
     ShaderProgram m_shaderProgram_TFUpdate;
     struct UniformLocations {
+        GLint basisMatrix;
+        GLint derivMatrix;
+        GLint rotationRadius;
+        GLint rotationalVelocity;
+        GLint parametricVelocity;
         GLint deltaTime;
-        GLint centerOfRotation;
     };
     UniformLocations m_uniformLocations;
     
     
+    struct ParticleData {
+        glm::vec3 position;
+        float parametricDist;
+        float rotationAngle;
+    };
+    
+    struct BezierCurve {
+        glm::mat4 basisMatrix; // B(t)
+        glm::mat4 derivMatrix; // B'(t), derivative matrix
+    };
+    BezierCurve m_tornadoCurve;
+    
+    
     // Transform Feedback source/destination buffers.
+    // For holding interleaved vertex attributes
     struct TransformFeedbackBuffers {
         GLuint sourceVbo;
         GLuint destVbo;
@@ -57,9 +63,6 @@ private:
     
     GLuint m_vao_TFSource;
     GLuint m_vao_TFDest;
-    
-    GLuint m_vbo_particleRotation;
-    
     
     
     
@@ -73,8 +76,6 @@ private:
     void loadShaders();
     
     void loadTransformFeedbackPositionBuffers();
-    
-    void loadParticleRotationBuffers();
     
     void setupVertexAttribMappings();
     
@@ -91,6 +92,15 @@ private:
     void updateUniforms (
         double secondsSinceLastUpdate
     );
+    
+    void setTornadoCurveFromControlPoints (
+        const vec3 & p0,
+        const vec3 & p1,
+        const vec3 & p2,
+        const vec3 & p3
+    );
+    
+    VertexAttributeDescriptor getVertexDescriptorForParticlePositions() const;
     
 }; // end class ParticleSystemImpl
 
@@ -109,11 +119,15 @@ ParticleSystemImpl::ParticleSystemImpl (
     
     loadTransformFeedbackPositionBuffers();
     
-    loadParticleRotationBuffers();
-    
     setupVertexAttribMappings();
     
     setStaticUniformData();
+    
+    glm::vec3 p0(0.0f, -3.0f, -5.0f);
+    glm::vec3 p1(1.0f,  0.0f,  -5.0f);
+    glm::vec3 p2(-1.0f, 0.0f, -5.0f);
+    glm::vec3 p3(0.0f, 3.0f,  -5.0f);
+    setTornadoCurveFromControlPoints(p0, p1, p2, p3);
 }
 
 //---------------------------------------------------------------------------------------
@@ -139,19 +153,34 @@ void ParticleSystemImpl::loadShaders() {
     m_shaderProgram_TFUpdate.attachVertexShader(m_assetDirectory.at("TFUpdate.glsl"));
     m_shaderProgram_TFUpdate.attachFragmentShader(m_assetDirectory.at("TFUpdateFrag.glsl"));
     
-    const GLchar* feedbackVaryings[] = { "VsOut.position" };
-    glTransformFeedbackVaryings(m_shaderProgram_TFUpdate, 1, feedbackVaryings, GL_INTERLEAVED_ATTRIBS);
+    const GLchar* feedbackVaryings[] = { "VsOut.position",
+                                         "VsOut.parametricDist",
+                                         "VsOut.rotationAngle" };
+    glTransformFeedbackVaryings(m_shaderProgram_TFUpdate, 3, feedbackVaryings, GL_INTERLEAVED_ATTRIBS);
     
     m_shaderProgram_TFUpdate.link();
     
     
     //-- Query uniform locations:
     {
+        m_uniformLocations.basisMatrix =
+            glGetUniformLocation(m_shaderProgram_TFUpdate, "basisMatrix");
+//
+//        m_uniformLocations.derivMatrix =
+//            glGetUniformLocation(m_shaderProgram_TFUpdate, "derivMatrix");
+//        
+//        m_uniformLocations.rotationRadius =
+//            glGetUniformLocation(m_shaderProgram_TFUpdate, "rotationRadius");
+//        
+//        m_uniformLocations.rotationalVelocity =
+//            glGetUniformLocation(m_shaderProgram_TFUpdate, "rotationalVelocity");
+        
+        m_uniformLocations.parametricVelocity =
+            glGetUniformLocation(m_shaderProgram_TFUpdate, "parametricVelocity");
+        
         m_uniformLocations.deltaTime =
             glGetUniformLocation(m_shaderProgram_TFUpdate, "deltaTime");
         
-        m_uniformLocations.centerOfRotation =
-            glGetUniformLocation(m_shaderProgram_TFUpdate, "centerOfRotation");
     }
     
     CHECK_GL_ERRORS;
@@ -162,22 +191,17 @@ void ParticleSystemImpl::loadShaders() {
 void ParticleSystemImpl::loadTransformFeedbackPositionBuffers()
 {
     // Allocate enough space for maxParticles
-    std::vector<glm::vec3> positionData(m_maxParticles);
+    ParticleData initialData = { glm::vec3(0.0f), 0.0f, 0.0f };
+    std::vector<ParticleData> particleData(m_maxParticles, initialData);
     
-    const glm::vec3 startPos(0.0f, -2.0f, -8.0f);
-    const glm::vec3 delta(0.0f, 0.2f, -0.87f);
-    for(int i(0); i < m_maxParticles; ++i) {
-        glm::vec3 pos = startPos + float(i)*delta;
-        positionData[i] = pos;
-    }
-    GLsizeiptr numBytes = positionData.size() * sizeof(ParticlePosition);
+    GLsizeiptr numBytes = particleData.size() * sizeof(ParticleData);
     
     glGenBuffers(1, &m_TFBuffers.sourceVbo);
     glGenBuffers(1, &m_TFBuffers.destVbo);
     
-    // Place position data into source VBO.
+    // Place particle data into source VBO.
     glBindBuffer(GL_ARRAY_BUFFER, m_TFBuffers.sourceVbo);
-    glBufferData(GL_ARRAY_BUFFER, numBytes, positionData.data(), GL_STREAM_COPY);
+    glBufferData(GL_ARRAY_BUFFER, numBytes, particleData.data(), GL_STREAM_COPY);
     
     // Allocate space for destination VBO
     glBindBuffer(GL_ARRAY_BUFFER, m_TFBuffers.destVbo);
@@ -187,31 +211,6 @@ void ParticleSystemImpl::loadTransformFeedbackPositionBuffers()
 }
 
 
-//---------------------------------------------------------------------------------------
-void ParticleSystemImpl::loadParticleRotationBuffers()
-{
-    // Allocate enough space for maxParticles
-    std::vector<ParticleRotation> particleRotations(m_maxParticles);
-    
-    const glm::vec3 axis= glm::vec3(0.0f, 1.0f, 0.0f);
-    const float rotVelocity = 10.5f;
-    for(int i(0); i < m_maxParticles; ++i) {
-        ParticleRotation data;
-        data.axisOfRotation = axis + glm::vec3(i*0.01f, 0.0f, 0.0f);
-        data.rotionalVelocity = rotVelocity - i*0.2f;
-        particleRotations[i] = data;
-    }
-    
-    glGenBuffers(1, &m_vbo_particleRotation);
-    
-    glBindBuffer(GL_ARRAY_BUFFER, m_vbo_particleRotation);
-    
-    // Allocate space for each of m_numParticles.
-    GLsizeiptr numBytes = particleRotations.size() * sizeof(ParticleRotation);
-    glBufferData(GL_ARRAY_BUFFER, numBytes, particleRotations.data(), GL_STATIC_DRAW);
-    
-    CHECK_GL_ERRORS;
-}
 
 //---------------------------------------------------------------------------------------
 void ParticleSystemImpl::setupVertexAttribMappings()
@@ -226,52 +225,90 @@ void ParticleSystemImpl::setupVertexAttribMappings()
         glBindVertexArray(vao[i]);
         
         // Enable vertex attribute slots
-        glEnableVertexAttribArray(ATTRIBUTE_POSITION);
+        glEnableVertexAttribArray(ATTRIBUTE_SLOT_0);
         glEnableVertexAttribArray(ATTRIBUTE_SLOT_1);
-        glEnableVertexAttribArray(ATTRIBUTE_SLOT_2);
         CHECK_GL_ERRORS;
         
         // Set mapping of data from transform feedback buffer into
         // vertex attribute slots
         
-        // Position data
-        {
-            glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer[i]);
-            glVertexAttribPointer(ATTRIBUTE_POSITION, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-        }
-        CHECK_GL_ERRORS;
+        glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer[i]);
         
-        // Axis of Rotation data
+        // Parametric Distance
         {
-            glBindBuffer(GL_ARRAY_BUFFER, m_vbo_particleRotation);
-            GLsizei stride = sizeof(ParticleRotation);
-            GLsizei offset = 0;
-            GLboolean normalizeYes(GL_TRUE);
-            glVertexAttribPointer(ATTRIBUTE_SLOT_1, 3, GL_FLOAT, normalizeYes, stride,
+            GLsizei stride = sizeof(ParticleData);
+            GLsizei offset = sizeof(glm::vec3);
+            const GLint numComponents = 1;
+            glVertexAttribPointer(ATTRIBUTE_SLOT_0, numComponents, GL_FLOAT, GL_FALSE, stride,
                                   reinterpret_cast<const GLvoid *>(offset));
+            
+            CHECK_GL_ERRORS;
         }
-        CHECK_GL_ERRORS;
         
-        // Rotation velocity data
+        // Rotation Angle
         {
-            glBindBuffer(GL_ARRAY_BUFFER, m_vbo_particleRotation);
-            GLsizei stride = sizeof(ParticleRotation);
-            GLsizei offset = sizeof(ParticleRotation::axisOfRotation);
-            glVertexAttribPointer(ATTRIBUTE_SLOT_2, 1, GL_FLOAT, GL_FALSE, stride,
+            GLsizei stride = sizeof(ParticleData);
+            GLsizei offset = sizeof(glm::vec3) + sizeof(float);
+            const GLint numComponents = 1;
+            glVertexAttribPointer(ATTRIBUTE_SLOT_1, numComponents, GL_FLOAT, GL_FALSE, stride,
                                   reinterpret_cast<const GLvoid *>(offset));
+            
+            CHECK_GL_ERRORS;
         }
-        CHECK_GL_ERRORS;
+        
     }
 }
 
 
 //---------------------------------------------------------------------------------------
+void ParticleSystemImpl::setTornadoCurveFromControlPoints (
+    const vec3 & p0,
+    const vec3 & p1,
+    const vec3 & p2,
+    const vec3 & p3
+) {
+    glm::mat4 pMatrix = {
+        glm::vec4(p0, 0.0f),
+        glm::vec4(p1, 0.0f),
+        glm::vec4(p2, 0.0f),
+        glm::vec4(p3, 0.0f)
+    };
+    
+    glm::mat4 coefficientMatrix = {
+        { 1.0f,  0.0f,  0.0f,  0.0f},
+        {-3.0f,  3.0f,  0.0f,  0.0f},
+        { 3.0f, -6.0f,  3.0f,  0.0f},
+        {-1.0f,  3.0f, -3.0f,  1.0f}
+    };
+    
+    m_tornadoCurve.basisMatrix = pMatrix * coefficientMatrix;
+    
+    
+    glm::mat4 derivCoefficientMatrix = {
+        {-3.0f,  3.0f,  0.0f,  0.0f},
+        { 6.0f, -12.0f, 6.0f,  0.0f},
+        {-3.0f,  9.0f, -9.0f,  3.0f},
+        { 0.0f,  0.0f,  0.0f,  0.0f},
+    };
+    
+    m_tornadoCurve.derivMatrix = pMatrix * derivCoefficientMatrix;
+    
+}
+
+//---------------------------------------------------------------------------------------
 void ParticleSystemImpl::setStaticUniformData()
 {
-    const glm::vec3 centerOfRotations{0.0f, 0.0f, -10.0f};
-    
     m_shaderProgram_TFUpdate.enable();
-    glUniform3fv(m_uniformLocations.centerOfRotation, 1, &centerOfRotations[0]);
+    
+//    const float rotationRadius = 1.0f;
+//    glUniform1f(m_uniformLocations.rotationRadius, rotationRadius);
+//    
+//    const float rotationalVelocity = 0.8f;
+//    glUniform1f(m_uniformLocations.rotationalVelocity, rotationalVelocity);
+    
+    const float parametricVelocity = 0.2f;
+    glUniform1f(m_uniformLocations.parametricVelocity, parametricVelocity);
+    
     
     CHECK_GL_ERRORS;
 }
@@ -290,6 +327,11 @@ void ParticleSystemImpl::updateUniforms (
     double secondsSinceLastUpdate
 ) {
     glUniform1f(m_uniformLocations.deltaTime, secondsSinceLastUpdate);
+    
+    glUniformMatrix4fv(m_uniformLocations.basisMatrix, 1, GL_FALSE, &m_tornadoCurve.basisMatrix[0][0]);
+
+//    glUniformMatrix4fv(m_uniformLocations.derivMatrix, 1, GL_FALSE, &m_tornadoCurve.derivMatrix[0][0]);
+    
     CHECK_GL_ERRORS;
 }
 
@@ -356,14 +398,21 @@ GLuint ParticleSystem::particlePositionsVbo () const
 
 
 //---------------------------------------------------------------------------------------
-GLsizei ParticleSystem::particlePositionElementSizeInBytes () const
+VertexAttributeDescriptor ParticleSystem::getVertexDescriptorForParticlePositions() const
 {
-    return sizeof(ParticlePosition);
+    return impl->getVertexDescriptorForParticlePositions();
 }
 
 
 //---------------------------------------------------------------------------------------
-GLsizei ParticleSystem::numComponentsPerParticlePosition() const
+VertexAttributeDescriptor ParticleSystemImpl::getVertexDescriptorForParticlePositions() const
 {
-    return NUM_POSITION_COMPONENTS;
+    VertexAttributeDescriptor descriptor;
+    
+    descriptor.numComponents = sizeof(ParticleData::position) / sizeof(float);
+    descriptor.type = GL_FLOAT;
+    descriptor.offset = 0;
+    descriptor.stride = sizeof(ParticleData);
+    
+    return descriptor;
 }
