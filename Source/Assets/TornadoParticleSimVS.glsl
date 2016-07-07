@@ -125,8 +125,11 @@ void main() {
     float vertexID = float(gl_VertexID);
     float debrisDistance = step(vertexID, numActiveParticles * 0.02);
     
+    // Increase conicSpread with increase in numActiveParticles.
+    float crowdingfactor = 3.0f * (1.0 + numActiveParticles * 0.001);
+    
     // Rotate particle position about pointOnCurve.
-    float conicSpread = 2.5f * particleRandomness * (t + 0.1) + debrisDistance;
+    float conicSpread = crowdingfactor * particleRandomness * (t + 0.1) + debrisDistance;
     vec3 updatedPosition = pointOnCurve + ((conicSpread * rotationRadius) * normalToCurve(t));
     updatedPosition =
         rotate_position_about_point(updatedPosition, axisOfRotation, angle, pointOnCurve);
