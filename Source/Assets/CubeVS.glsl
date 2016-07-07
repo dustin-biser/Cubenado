@@ -36,5 +36,5 @@ void main() {
     // Transform normal to EyeSpace.
     vsOut.normal = normalMatrix * n;
     
-    gl_Position = projectMatrix * (viewMatrix * pos);
+    gl_Position = projectMatrix * (vsOut.position);
 }
