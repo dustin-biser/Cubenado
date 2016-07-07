@@ -324,10 +324,10 @@ void ParticleSystemImpl::setupVertexAttribMappings()
 void ParticleSystemImpl::initTornadoCurve ()
 {
     // Bezier curve control points
-    m_tornadoCurve.p0 = glm::vec3(0.0f, -18.0f, -50.0f);
-    m_tornadoCurve.p1 = glm::vec3(4.0f,  -10.0f,  -50.0f);
-    m_tornadoCurve.p2 = glm::vec3(-3.0f, 2.0f, -10.0f);
-    m_tornadoCurve.p3 = glm::vec3(0.0f, 8.0f,  -10.0f);
+    m_tornadoCurve.p0 = glm::vec3(0.0f, -17.0f, -50.0f);
+    m_tornadoCurve.p1 = glm::vec3(4.0f,  -9.0f,  -50.0f);
+    m_tornadoCurve.p2 = glm::vec3(-3.0f, 3.0f, -10.0f);
+    m_tornadoCurve.p3 = glm::vec3(0.0f, 9.0f,  -10.0f);
 
     ControlPointMotion & p0_motion = m_tornadoCurve.p0_motion;
     p0_motion.centerOfRotation = m_tornadoCurve.p0;
@@ -339,7 +339,7 @@ void ParticleSystemImpl::initTornadoCurve ()
     p3_motion.centerOfRotation = m_tornadoCurve.p3;
     p3_motion.radius = 2.0f;
     p3_motion.angle = 0.0f;
-    p3_motion.rotationSpeed = 0.2f;
+    p3_motion.rotationSpeed = 0.8f;
 }
 
 
