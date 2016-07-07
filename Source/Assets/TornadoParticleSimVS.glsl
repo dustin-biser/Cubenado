@@ -11,22 +11,17 @@ layout(location = ATTRIBUTE_SLOT_0) in float parametricDist;  // [0,1] Distance 
 layout(location = ATTRIBUTE_SLOT_1) in float rotationAngle;   // Current rotation angle about orbit.
 
 
-//// Particle motion will inolve rotation about
-//// Bezier curve tangent
-//layout(std140)
-//uniform BezierCurve {
-//    mat4 basisMatrix; // B(t)
-//    mat4 derivMatrix; // B'(t), derivative matrix
-//} bezierCurve;
-
+// Particle motion will inolve rotation about Bezier curve tangents
 // Bezier Curve
 uniform mat4 basisMatrix;      // B(t)
 uniform mat4 derivMatrix;      // B'(t), derivative matrix padded with extra zeros.
 
-uniform float rotationRadius;      // radius of rotation about Bezier curve.
-uniform float rotationalVelocity;  // radians per second.
-uniform float parametricVelocity;  // parametric distance along Bezier curve per second.
-uniform float deltaTime;           // dt.
+uniform float deltaTime;           // dt, time delta.
+uniform float rotationRadius;      // Radius of rotation about Bezier curve.
+uniform float rotationalVelocity;  // Radians per second.
+uniform float parametricVelocity;  // Parametric distance along Bezier curve per second.
+uniform float particleRandomness;  // [0,1], particle motion randomness factor.
+uniform float numActiveParticles;  // Number of active partices.
 
 
 out VsOut {
@@ -51,6 +46,7 @@ vec4 quat_from_axis_angle (
     
     return q;
 }
+
 
 //---------------------------------------------------------------------------------------
 vec3 rotate_position (
@@ -123,10 +119,15 @@ void main() {
     
     // Compute axis and angle of rotation.
     vec3 axisOfRotation = B_tangent(t);
-    float angle = rotationAngle + (deltaTime * rotationalVelocity);
+    float angle = rotationAngle + (deltaTime * rotationalVelocity * (1.0 + particleRandomness));
+    
+    // Extra distance from curve for debris particles
+    float vertexID = float(gl_VertexID);
+    float debrisDistance = step(vertexID, numActiveParticles * 0.02);
     
     // Rotate particle position about pointOnCurve.
-    vec3 updatedPosition = pointOnCurve + ((2.0*(t+0.2)) * rotationRadius * normalToCurve(t));
+    float conicSpread = 2.5f * particleRandomness * (t + 0.1) + debrisDistance;
+    vec3 updatedPosition = pointOnCurve + ((conicSpread * rotationRadius) * normalToCurve(t));
     updatedPosition =
         rotate_position_about_point(updatedPosition, axisOfRotation, angle, pointOnCurve);
     

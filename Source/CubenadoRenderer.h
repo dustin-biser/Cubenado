@@ -19,12 +19,15 @@ typedef struct FramebufferSize FramebufferSize;
 
 - (instancetype)initWithFramebufferSize: (FramebufferSize)framebufferSize
                                numCubes: (uint) numCubes
-                               maxCubes: (uint) maxCubes;
+                               maxCubes: (uint) maxCubes
+                         cubeRandomness: (float) cubeRandomness;
 
 - (void) renderwithFramebufferSize: (FramebufferSize)framebufferSize;
 
 - (void) update:(NSTimeInterval)timeSinceLastUpdate;
 
 - (void) setNumCubes: (uint)numCubes;
+
+- (void) setCubeRandomness: (float)cubeRandomness;
 
 @end

@@ -24,7 +24,8 @@ public:
     ParticleSystem (
         const AssetDirectory & assetDirectory,
         uint numActiveParticles,
-        uint maxParticles
+        uint maxParticles,
+        float particleRandomness
     );
     
     ~ParticleSystem();
@@ -44,6 +45,8 @@ public:
     // Returns Vertex Buffer object referencing particle position data.
     GLuint particlePositionsVbo () const;
     
+    // Clamped value between [0,1] for degee of randomness of particle motion.
+    void setParticleRandomness(float x);
     
     // Advance particle system by the given time step.
     void update (

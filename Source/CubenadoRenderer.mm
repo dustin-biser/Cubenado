@@ -63,7 +63,8 @@ typedef GLushort Index;
 @interface CubenadoRenderer()
 
 - (void) initializeRendererWith: (uint)numCubes
-                    andMaxCubes: (uint)maxCubes;
+                       maxCubes: (uint)maxCubes
+                 cubeRandomness: (float) cubeRandomness;
 
 - (void) buildAssetDirectory;
 
@@ -119,13 +120,15 @@ typedef GLushort Index;
 - (instancetype)initWithFramebufferSize: (FramebufferSize)framebufferSize
                                numCubes: (uint) numCubes
                                maxCubes: (uint) maxCubes
+                         cubeRandomness: (float) cubeRandomness
 {
     self = [super init];
     if(self) {
         _framebufferSize = framebufferSize;
         
         [self initializeRendererWith: numCubes
-                         andMaxCubes: maxCubes];
+                            maxCubes: maxCubes
+                      cubeRandomness: cubeRandomness];
     }
     
     return self;
@@ -134,7 +137,8 @@ typedef GLushort Index;
 
 //---------------------------------------------------------------------------------------
 - (void) initializeRendererWith: (uint)numCubes
-                    andMaxCubes: (uint)maxCubes
+                       maxCubes: (uint)maxCubes
+                 cubeRandomness: (float) cubeRandomness
 {
     [self buildAssetDirectory];
     
@@ -166,7 +170,8 @@ typedef GLushort Index;
     const uint maxParticles = maxCubes;
     _particleSystem = std::make_shared<ParticleSystem>(_assetDirectory,
                                                        numActiveParticles,
-                                                       maxParticles);
+                                                       maxParticles,
+                                                       cubeRandomness);
 }
 
 //---------------------------------------------------------------------------------------
@@ -545,6 +550,13 @@ typedef GLushort Index;
 - (void) setNumCubes: (uint)numCubes
 {
     _particleSystem->setNumActiveParticles(numCubes);
+}
+
+
+//---------------------------------------------------------------------------------------
+- (void) setCubeRandomness: (float)cubeRandomness
+{
+    _particleSystem->setParticleRandomness(cubeRandomness);
 }
 
 

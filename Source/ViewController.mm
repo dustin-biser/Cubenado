@@ -101,9 +101,11 @@
     
     // Initialize CubenadoRender with number of cubes from UI Slider
     const uint numCubes = static_cast<uint>(_slider_numCubes.value);
+    const float cubeRandomness = _slider_cubeRandomness.value;
     _cubenadoRenderer = [[CubenadoRenderer alloc] initWithFramebufferSize:approxframebufferSize
                                                                  numCubes:numCubes
-                                                                 maxCubes:MAX_NUMBER_OF_CUBES];
+                                                                 maxCubes:MAX_NUMBER_OF_CUBES
+                                                           cubeRandomness:cubeRandomness];
  
 }
 
@@ -175,9 +177,8 @@
 //---------------------------------------------------------------------------------------
 - (NSAttributedString *) labelTextForCubeRandomnessLabel
 {
-    
-    float value = _slider_cubeRandomness.value * 100.0f;
-    NSString * string = [NSString stringWithFormat:@"Cube Randomness: %.1f%%", value];
+    float cubeRandomness = _slider_cubeRandomness.value * 100.0f;
+    NSString * string = [NSString stringWithFormat:@"Cube Randomness: %.1f%%", cubeRandomness];
     
     return [[NSAttributedString alloc] initWithString:string
                                            attributes:@{ NSFontAttributeName:[self labelFont] }];
@@ -264,6 +265,7 @@
 {
     if ([sender isMemberOfClass:[UISlider class]])  {
         _label_forSliderCubeRandomness.attributedText = [self labelTextForCubeRandomnessLabel];
+        [_cubenadoRenderer setCubeRandomness:_slider_cubeRandomness.value];
     }
 }
 

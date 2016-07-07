@@ -29,6 +29,7 @@ private:
 //-- Members:
     uint m_numActiveParticles;
     uint m_maxParticles;
+    float m_particleRandomness;
     
     const AssetDirectory & m_assetDirectory;
     
@@ -40,6 +41,8 @@ private:
         GLint rotationalVelocity;
         GLint parametricVelocity;
         GLint deltaTime;
+        GLint particleRandomness;
+        GLint numActiveParticles;
     };
     UniformLocations m_uniformLocations;
     
@@ -74,7 +77,8 @@ private:
     ParticleSystemImpl (
         const AssetDirectory & assetDirectory,
         uint numActiveParticles,
-        uint maxParticles
+        uint maxParticles,
+        float particleRandomness
     );
     
     void loadShaders();
@@ -113,11 +117,13 @@ private:
 ParticleSystemImpl::ParticleSystemImpl (
     const AssetDirectory & assetDirectory,
     uint numActiveParticles,
-    uint maxParticles
+    uint maxParticles,
+    float particleRandomness
 )
     : m_assetDirectory(assetDirectory),
       m_numActiveParticles(numActiveParticles),
-      m_maxParticles(maxParticles)
+      m_maxParticles(maxParticles),
+      m_particleRandomness(particleRandomness)
 {
     loadShaders();
     
@@ -138,9 +144,11 @@ ParticleSystemImpl::ParticleSystemImpl (
 ParticleSystem::ParticleSystem (
     const AssetDirectory & assetDirectory,
     uint numActiveParticles,
-    uint maxParticles
+    uint maxParticles,
+    float particleRandomness
 ) {
-    impl = new ParticleSystemImpl(assetDirectory, numActiveParticles, maxParticles);
+    impl = new ParticleSystemImpl(assetDirectory, numActiveParticles, maxParticles,
+                                  particleRandomness);
 }
 
 //---------------------------------------------------------------------------------------
@@ -184,6 +192,12 @@ void ParticleSystemImpl::loadShaders() {
         
         m_uniformLocations.deltaTime =
             glGetUniformLocation(m_shaderProgram_TFUpdate, "deltaTime");
+        
+        m_uniformLocations.particleRandomness =
+            glGetUniformLocation(m_shaderProgram_TFUpdate, "particleRandomness");
+        
+        m_uniformLocations.numActiveParticles =
+            glGetUniformLocation(m_shaderProgram_TFUpdate, "numActiveParticles");
         
     }
     
@@ -347,6 +361,10 @@ void ParticleSystemImpl::updateUniforms (
 
     glUniformMatrix4fv(m_uniformLocations.derivMatrix, 1, GL_FALSE, &m_tornadoCurve.derivMatrix[0][0]);
     
+    glUniform1f(m_uniformLocations.particleRandomness, m_particleRandomness);
+    
+    glUniform1f(m_uniformLocations.numActiveParticles, m_numActiveParticles);
+    
     CHECK_GL_ERRORS;
 }
 
@@ -430,4 +448,12 @@ VertexAttributeDescriptor ParticleSystemImpl::getVertexDescriptorForParticlePosi
     descriptor.stride = sizeof(ParticleData);
     
     return descriptor;
+}
+
+
+//---------------------------------------------------------------------------------------
+void ParticleSystem::setParticleRandomness (
+    float x
+) {
+    impl->m_particleRandomness = x;
 }
