@@ -19,13 +19,10 @@ using glm::vec3;
 using glm::rotateY;
 
 
-#import <cstdlib>
-using std::rand;
-
-
 #import "ShaderProgram.hpp"
 #import "AssetDirectory.hpp"
 #import "VertexAttributeDefines.h"
+#import "NormRand.hpp"
 
 
 class ParticleSystemImpl {
@@ -230,12 +227,6 @@ void ParticleSystemImpl::loadShaders() {
     }
     
     CHECK_GL_ERRORS;
-}
-
-
-//---------------------------------------------------------------------------------------
-static inline float rand0to1() {
-    return static_cast<float>(rand()) / RAND_MAX;
 }
 
 

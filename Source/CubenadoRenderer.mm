@@ -17,8 +17,9 @@ using std::unordered_map;
 #import "ShaderProgram.hpp"
 #import "AssetDirectory.hpp"
 #import "ParticleSystem.hpp"
-
+#import "NormRand.hpp"
 #import "VertexAttributeDefines.h"
+
 
 struct Transforms {
     glm::mat4 modelMatrix;
@@ -70,9 +71,9 @@ typedef GLushort Index;
 
 - (void) loadShaders;
 
-- (void) loadCubeVertexData;
+- (void) loadCubeVertexData: (uint)maxCubes;
 
-- (void) loadVertexArrays;
+- (void) initVertexAttribMappings;
 
 - (void) loadUniforms;
 
@@ -113,6 +114,15 @@ typedef GLushort Index;
     Material _material;
     GLint _uniformBufferDataOffset_Material;
     
+    struct CubeOrientation {
+        glm::vec3 axis;
+        float maxAngle;
+    };
+    
+    // Cube orientation based on randomness
+    GLint _uniformLocation_cubeRandomness;
+    float _cubeRandomness;
+    GLuint _vbo_orientation;
 }
 
 
@@ -140,13 +150,15 @@ typedef GLushort Index;
                        maxCubes: (uint)maxCubes
                  cubeRandomness: (float) cubeRandomness
 {
+    _cubeRandomness = cubeRandomness;
+    
     [self buildAssetDirectory];
     
     [self loadShaders];
     
-    [self loadCubeVertexData];
+    [self loadCubeVertexData: maxCubes];
     
-    [self loadVertexArrays];
+    [self initVertexAttribMappings];
     
     [self setUBOBindings];
     
@@ -194,8 +206,9 @@ typedef GLushort Index;
     }
 }
 
+
 //---------------------------------------------------------------------------------------
-- (void) loadCubeVertexData
+- (void) loadCubeVertexData: (uint) maxCubes
 {
     // Cube vertex data.
     std::vector<Vertex> vertexData = {
@@ -271,10 +284,36 @@ typedef GLushort Index;
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, numBytes, indexData.data(), GL_STATIC_DRAW);
         CHECK_GL_ERRORS;
     }
+    
+    
+    // Load cube orientation data
+    {
+        glGenBuffers(1, &_vbo_orientation);
+        
+        std::vector<CubeOrientation> orientationData(maxCubes);
+        
+        glm::vec3 axis;
+        const float maxAngle(M_PI * 0.5f);
+        for(int i(0); i < maxCubes; ++i) {
+            axis.x = rand0to1();
+            axis.y = rand0to1();
+            axis.z = rand0to1();
+            orientationData[i].axis = glm::normalize(axis);
+            orientationData[i].maxAngle = maxAngle;
+        }
+        
+
+        glBindBuffer(GL_ARRAY_BUFFER, _vbo_orientation);
+        
+        GLsizeiptr numBytes = orientationData.size() * sizeof(CubeOrientation);
+        glBufferData(GL_ARRAY_BUFFER, numBytes, orientationData.data(), GL_STATIC_DRAW);
+        
+        CHECK_GL_ERRORS;
+    }
 }
 
 //---------------------------------------------------------------------------------------
-- (void)loadVertexArrays
+- (void)initVertexAttribMappings
 {
     glGenVertexArrays(1, &_vao_cube);
     glBindVertexArray(_vao_cube);
@@ -285,12 +324,13 @@ typedef GLushort Index;
         glBindVertexArray(_vao_cube);
         glEnableVertexAttribArray(ATTRIBUTE_POSITION);
         glEnableVertexAttribArray(ATTRIBUTE_NORMAL);
+        glEnableVertexAttribArray(ATTRIBUTE_INSTANCE_1);
         
         CHECK_GL_ERRORS;
     }
     
     
-    // Position data mapping from VBO to vertex attribute slot
+    // Position data
     {
         GLint stride = sizeof(Vertex);
         GLint startOffset(0);
@@ -300,13 +340,27 @@ typedef GLushort Index;
         CHECK_GL_ERRORS;
     }
     
-    // Normal data mapping from VBO to vertex attribute slot
+    // Normal data
     {
         GLint stride = sizeof(Vertex);
         GLint startOffset = sizeof(Vertex::position);
         glBindBuffer(GL_ARRAY_BUFFER, _vbo_cube);
         glVertexAttribPointer(ATTRIBUTE_NORMAL, 3, GL_FLOAT, GL_FALSE, stride,
                               reinterpret_cast<const GLvoid *>(startOffset));
+        CHECK_GL_ERRORS;
+    }
+    
+    // Cube orientation
+    {
+        GLint stride = 0;
+        GLint startOffset = 0;
+        glBindBuffer(GL_ARRAY_BUFFER, _vbo_orientation);
+        glVertexAttribPointer(ATTRIBUTE_INSTANCE_1, 4, GL_FLOAT, GL_FALSE, stride,
+                              reinterpret_cast<const GLvoid *>(startOffset));
+        
+        // Advance attribute once per instance.
+        glVertexAttribDivisor(ATTRIBUTE_INSTANCE_1, 1);
+        
         CHECK_GL_ERRORS;
     }
     
@@ -321,6 +375,11 @@ typedef GLushort Index;
     _shaderProgram_Cube.attachVertexShader(_assetDirectory.at("CubeVS.glsl"));
     _shaderProgram_Cube.attachFragmentShader(_assetDirectory.at("CubeFS.glsl"));
     _shaderProgram_Cube.link();
+    
+    
+    // Query Cube Randomness uniform location
+    _uniformLocation_cubeRandomness =
+        glGetUniformLocation(_shaderProgram_Cube, "cubeRandomness");
 }
 
 
@@ -471,6 +530,12 @@ typedef GLushort Index;
     glUnmapBuffer(GL_UNIFORM_BUFFER);
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
     CHECK_GL_ERRORS;
+    
+    
+    // Update cube randomness uniform
+    _shaderProgram_Cube.enable();
+    glUniform1f(_uniformLocation_cubeRandomness, _cubeRandomness);
+    CHECK_GL_ERRORS;
 }
 
 
@@ -528,7 +593,7 @@ typedef GLushort Index;
 {
     [self setViewportIfFramebuferSizeChanged: framebufferSize];
     
-    // Clear the framebuffer
+    // Clear framebuffer
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
     [self setParticlePositionVboAttribMapping: _particleSystem.get()
@@ -556,6 +621,9 @@ typedef GLushort Index;
 //---------------------------------------------------------------------------------------
 - (void) setCubeRandomness: (float)cubeRandomness
 {
+    _cubeRandomness = cubeRandomness;
+    
+    // Update particle system randomness as well.
     _particleSystem->setParticleRandomness(cubeRandomness);
 }
 

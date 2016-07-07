@@ -36,6 +36,7 @@
 		0C233CE31D28587E00977B5F /* CubenadoRenderer.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = CubenadoRenderer.mm; sourceTree = "<group>"; };
 		0C7B17921D24DE8C00D3E9E4 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		0C7B17941D24DEA900D3E9E4 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		0C9AE3F61D2EF4C300947A44 /* NormRand.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = NormRand.hpp; sourceTree = "<group>"; };
 		0CBD818F1D28A4DD0059CB8F /* ParticleSystem.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = ParticleSystem.hpp; sourceTree = "<group>"; };
 		0CBD81901D28A4DD0059CB8F /* ParticleSystem.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ParticleSystem.cpp; sourceTree = "<group>"; };
 		0CBD81921D28B7440059CB8F /* AssetDirectory.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = AssetDirectory.hpp; sourceTree = "<group>"; };
@@ -127,6 +128,7 @@
 				0CBD81921D28B7440059CB8F /* AssetDirectory.hpp */,
 				0CBD81931D28C5220059CB8F /* NumericTypes.h */,
 				0CBD81941D28C8990059CB8F /* VertexAttributeDefines.h */,
+				0C9AE3F61D2EF4C300947A44 /* NormRand.hpp */,
 			);
 			path = Source;
 			sourceTree = "<group>";
