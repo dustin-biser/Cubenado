@@ -7,10 +7,10 @@
 #import "CubenadoRenderer.h"
 
 
-#define MIN_NUMBER_OF_CUBES 1
+#define MIN_NUMBER_OF_CUBES 10
 #define MAX_NUMBER_OF_CUBES 10000
 
-#define NUMBER_OF_CUBES_START 1
+#define NUMBER_OF_CUBES_START 200
 #define CUBE_RANDOMNESS_START 0.1
 
 

@@ -13,6 +13,10 @@ using std::min;
 #import <glm/glm.hpp>
 using glm::vec3;
 
+#import <cstdlib>
+using std::rand;
+
+
 #import "ShaderProgram.hpp"
 #import "AssetDirectory.hpp"
 #import "VertexAttributeDefines.h"
@@ -75,7 +79,7 @@ private:
     
     void loadShaders();
     
-    void loadTransformFeedbackPositionBuffers();
+    void initTransformFeedbackBuffers();
     
     void setupVertexAttribMappings();
     
@@ -117,15 +121,15 @@ ParticleSystemImpl::ParticleSystemImpl (
 {
     loadShaders();
     
-    loadTransformFeedbackPositionBuffers();
+    initTransformFeedbackBuffers();
     
     setupVertexAttribMappings();
     
     setStaticUniformData();
     
-    glm::vec3 p0(0.0f, -8.0f, -10.0f);
-    glm::vec3 p1(1.0f,  0.0f,  -10.0f);
-    glm::vec3 p2(-1.0f, 0.0f, -10.0f);
+    glm::vec3 p0(0.0f, -18.0f, -50.0f);
+    glm::vec3 p1(4.0f,  -10.0f,  -50.0f);
+    glm::vec3 p2(-3.0f, 2.0f, -10.0f);
     glm::vec3 p3(0.0f, 8.0f,  -10.0f);
     setTornadoCurveFromControlPoints(p0, p1, p2, p3);
 }
@@ -188,11 +192,25 @@ void ParticleSystemImpl::loadShaders() {
 
 
 //---------------------------------------------------------------------------------------
-void ParticleSystemImpl::loadTransformFeedbackPositionBuffers()
+static inline float rand0to1() {
+    return static_cast<float>(rand()) / RAND_MAX;
+}
+
+
+//---------------------------------------------------------------------------------------
+void ParticleSystemImpl::initTransformFeedbackBuffers()
 {
-    // Allocate enough space for maxParticles
+    // Allocate enough space for maxParticles.
+    std::vector<ParticleData> particleData(m_maxParticles);
+    
+    // Randomnly seed particles throughout tornado.
     ParticleData initialData = { glm::vec3(0.0f), 0.0f, 0.0f };
-    std::vector<ParticleData> particleData(m_maxParticles, initialData);
+    const float TWO_PI = 2.0f * M_PI;
+    for(int i(0); i < m_maxParticles; ++i) {
+        initialData.rotationAngle = rand0to1() * TWO_PI;
+        initialData.parametricDist = rand0to1();
+        particleData[i] = initialData;
+    }
     
     GLsizeiptr numBytes = particleData.size() * sizeof(ParticleData);
     
@@ -300,7 +318,7 @@ void ParticleSystemImpl::setStaticUniformData()
 {
     m_shaderProgram_TFUpdate.enable();
     
-    glUniform1f(m_uniformLocations.rotationRadius, 1.0f);
+    glUniform1f(m_uniformLocations.rotationRadius, 2.0f);
     
     glUniform1f(m_uniformLocations.rotationalVelocity, 10.0f);
     

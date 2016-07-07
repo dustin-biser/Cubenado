@@ -5,6 +5,7 @@
 #define ATTRIBUTE_SLOT_0      0
 #define ATTRIBUTE_SLOT_1      1
 
+#define TWO_PI 6.283185
 
 layout(location = ATTRIBUTE_SLOT_0) in float parametricDist;  // [0,1] Distance along Bezier Curve.
 layout(location = ATTRIBUTE_SLOT_1) in float rotationAngle;   // Current rotation angle about orbit.
@@ -116,19 +117,21 @@ vec3 normalToCurve (
 //---------------------------------------------------------------------------------------
 void main() {
     // Compute new location on curve.
-    float t = clamp(parametricDist + (deltaTime * parametricVelocity), 0.0, 1.0);
+    float newParametricDist = parametricDist + (deltaTime * parametricVelocity);
+    float t = (1.0 + sin(newParametricDist * TWO_PI)) * 0.5f;  // Oscillate t between [0,1]
     vec3 pointOnCurve = B(t);
     
-    // Compute axis and angle of rotation
+    // Compute axis and angle of rotation.
     vec3 axisOfRotation = B_tangent(t);
     float angle = rotationAngle + (deltaTime * rotationalVelocity);
     
-    
-    vec3 updatedPosition = pointOnCurve + (rotationRadius * normalToCurve(t));
-    updatedPosition = rotate_position_about_point(updatedPosition, axisOfRotation, angle, pointOnCurve);
+    // Rotate particle position about pointOnCurve.
+    vec3 updatedPosition = pointOnCurve + ((2.0*(t+0.2)) * rotationRadius * normalToCurve(t));
+    updatedPosition =
+        rotate_position_about_point(updatedPosition, axisOfRotation, angle, pointOnCurve);
     
     // Outputs
     vsOut.position = updatedPosition;
-    vsOut.parametricDist = t;
+    vsOut.parametricDist = newParametricDist;
     vsOut.rotationAngle = angle;
 }
