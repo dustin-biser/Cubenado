@@ -7,6 +7,9 @@
 #import <vector>
 using std::vector;
 
+#import <cmath>
+using std::sin;
+
 #import <algorithm>
 using std::min;
 
@@ -328,15 +331,15 @@ void ParticleSystemImpl::initTornadoCurve ()
 
     ControlPointMotion & p0_motion = m_tornadoCurve.p0_motion;
     p0_motion.centerOfRotation = m_tornadoCurve.p0;
-    p0_motion.radius = 3.0f;
+    p0_motion.radius = 1.0f;
     p0_motion.angle = 0.0f;
-    p0_motion.rotationSpeed = 1.0f;
+    p0_motion.rotationSpeed = 2.0f;
     
     ControlPointMotion & p3_motion = m_tornadoCurve.p3_motion;
     p3_motion.centerOfRotation = m_tornadoCurve.p3;
     p3_motion.radius = 2.0f;
     p3_motion.angle = 0.0f;
-    p3_motion.rotationSpeed = 0.6f;
+    p3_motion.rotationSpeed = 0.2f;
 }
 
 
@@ -346,8 +349,9 @@ void ParticleSystemImpl::updateControlPointPosition (
     ControlPointMotion & pointMotion,
     float secondsSinceLastUpdate
 ) {
-    float radius = pointMotion.radius;
-    float newAngle = pointMotion.angle + (pointMotion.rotationSpeed * secondsSinceLastUpdate);
+    float radius = pointMotion.radius * (1.0f + 2.0f * m_particleRandomness);
+    float rotationSpeed = pointMotion.rotationSpeed * (2.0f * m_particleRandomness);
+    float newAngle = pointMotion.angle + (rotationSpeed * secondsSinceLastUpdate);
     
     glm::vec3 x_dir(1.0f, 0.0f, 0.0f);
     glm::vec3 newPosition = radius * x_dir;
@@ -356,6 +360,7 @@ void ParticleSystemImpl::updateControlPointPosition (
     
     pointPosition = newPosition;
     pointMotion.angle = newAngle;
+    
 }
 
 //---------------------------------------------------------------------------------------

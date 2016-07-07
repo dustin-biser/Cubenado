@@ -123,10 +123,11 @@ void main() {
     
     // Extra distance from curve for debris particles
     float vertexID = float(gl_VertexID);
-    float debrisDistance = step(vertexID, numActiveParticles * 0.02);
+    float debrisDistance = step(vertexID, numActiveParticles * 0.02 * particleRandomness);
+    debrisDistance *= step(0.1, particleRandomness); // No debris particles below 10% particlRandomness
     
-    // Increase conicSpread with increase in numActiveParticles.
-    float crowdingfactor = 3.0f * (1.0 + numActiveParticles * 0.001);
+    // Increase conicSpread slightly with increase in numActiveParticles.
+    float crowdingfactor = 1.0 + numActiveParticles * 0.0005;
     
     // Rotate particle position about pointOnCurve.
     float conicSpread = crowdingfactor * particleRandomness * (t + 0.1) + debrisDistance;
