@@ -1,5 +1,5 @@
 //
-// TFUpdateFrag.glsl
+// TornadoParticleSimFS.glsl
 //
 // Dummy Fragment Shader to allow for OpenGL ES shader linkage
 #version 300 es

@@ -150,8 +150,8 @@ ParticleSystem::~ParticleSystem()
 //---------------------------------------------------------------------------------------
 void ParticleSystemImpl::loadShaders() {
     m_shaderProgram_TFUpdate.generateProgramObject();
-    m_shaderProgram_TFUpdate.attachVertexShader(m_assetDirectory.at("TFUpdate.glsl"));
-    m_shaderProgram_TFUpdate.attachFragmentShader(m_assetDirectory.at("TFUpdateFrag.glsl"));
+    m_shaderProgram_TFUpdate.attachVertexShader(m_assetDirectory.at("TornadoParticleSimVS.glsl"));
+    m_shaderProgram_TFUpdate.attachFragmentShader(m_assetDirectory.at("TornadoParticleSimFS.glsl"));
     
     const GLchar* feedbackVaryings[] = { "VsOut.position",
                                          "VsOut.parametricDist",

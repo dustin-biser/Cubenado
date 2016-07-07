@@ -7,9 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0C233CD71D2754FC00977B5F /* TFUpdate.glsl in Resources */ = {isa = PBXBuildFile; fileRef = 0C233CD61D2754FC00977B5F /* TFUpdate.glsl */; };
+		0C233CD71D2754FC00977B5F /* TornadoParticleSimVS.glsl in Resources */ = {isa = PBXBuildFile; fileRef = 0C233CD61D2754FC00977B5F /* TornadoParticleSimVS.glsl */; };
 		0C233CDF1D275E8200977B5F /* ShaderProgram.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0C233CDD1D275E8200977B5F /* ShaderProgram.cpp */; };
-		0C233CE11D27875300977B5F /* TFUpdateFrag.glsl in Resources */ = {isa = PBXBuildFile; fileRef = 0C233CE01D27875300977B5F /* TFUpdateFrag.glsl */; };
+		0C233CE11D27875300977B5F /* TornadoParticleSimFS.glsl in Resources */ = {isa = PBXBuildFile; fileRef = 0C233CE01D27875300977B5F /* TornadoParticleSimFS.glsl */; };
 		0C233CE41D28587E00977B5F /* CubenadoRenderer.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0C233CE31D28587E00977B5F /* CubenadoRenderer.mm */; };
 		0C7B17931D24DE8C00D3E9E4 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0C7B17921D24DE8C00D3E9E4 /* UIKit.framework */; };
 		0C7B17951D24DEA900D3E9E4 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0C7B17941D24DEA900D3E9E4 /* Foundation.framework */; };
@@ -27,11 +27,11 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		0C233CD61D2754FC00977B5F /* TFUpdate.glsl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = TFUpdate.glsl; sourceTree = "<group>"; };
+		0C233CD61D2754FC00977B5F /* TornadoParticleSimVS.glsl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = TornadoParticleSimVS.glsl; sourceTree = "<group>"; };
 		0C233CD81D275B0700977B5F /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = Source/Data/Info.plist; sourceTree = SOURCE_ROOT; };
 		0C233CDD1D275E8200977B5F /* ShaderProgram.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ShaderProgram.cpp; sourceTree = "<group>"; };
 		0C233CDE1D275E8200977B5F /* ShaderProgram.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = ShaderProgram.hpp; sourceTree = "<group>"; };
-		0C233CE01D27875300977B5F /* TFUpdateFrag.glsl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = TFUpdateFrag.glsl; sourceTree = "<group>"; };
+		0C233CE01D27875300977B5F /* TornadoParticleSimFS.glsl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = TornadoParticleSimFS.glsl; sourceTree = "<group>"; };
 		0C233CE21D28587E00977B5F /* CubenadoRenderer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CubenadoRenderer.h; sourceTree = "<group>"; };
 		0C233CE31D28587E00977B5F /* CubenadoRenderer.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = CubenadoRenderer.mm; sourceTree = "<group>"; };
 		0C7B17921D24DE8C00D3E9E4 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
@@ -78,8 +78,8 @@
 			children = (
 				0CE3D2B41D248EEB00FFB2B5 /* CubeFS.glsl */,
 				0CE3D2B51D248EEB00FFB2B5 /* CubeVS.glsl */,
-				0C233CD61D2754FC00977B5F /* TFUpdate.glsl */,
-				0C233CE01D27875300977B5F /* TFUpdateFrag.glsl */,
+				0C233CD61D2754FC00977B5F /* TornadoParticleSimVS.glsl */,
+				0C233CE01D27875300977B5F /* TornadoParticleSimFS.glsl */,
 			);
 			path = Assets;
 			sourceTree = "<group>";
@@ -200,8 +200,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				0CEB671F1D247DFA00A69E9A /* LaunchScreen.storyboard in Resources */,
-				0C233CD71D2754FC00977B5F /* TFUpdate.glsl in Resources */,
-				0C233CE11D27875300977B5F /* TFUpdateFrag.glsl in Resources */,
+				0C233CD71D2754FC00977B5F /* TornadoParticleSimVS.glsl in Resources */,
+				0C233CE11D27875300977B5F /* TornadoParticleSimFS.glsl in Resources */,
 				0CE3D2B61D248EEB00FFB2B5 /* CubeFS.glsl in Resources */,
 				0CE3D2B71D248EEB00FFB2B5 /* CubeVS.glsl in Resources */,
 				EF669886CA79788451A32520 /* Assets.xcassets in Resources */,

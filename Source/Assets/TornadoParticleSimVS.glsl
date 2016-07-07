@@ -1,5 +1,5 @@
 //
-// TFUpdate.glsl
+// TornadoParticleSimVS.glsl
 //
 #version 300 es
 #define ATTRIBUTE_SLOT_0      0
