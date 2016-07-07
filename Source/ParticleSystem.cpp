@@ -12,6 +12,9 @@ using std::min;
 
 #import <glm/glm.hpp>
 using glm::vec3;
+#import <glm/gtx/rotate_vector.hpp>
+using glm::rotateY;
+
 
 #import <cstdlib>
 using std::rand;
@@ -53,9 +56,28 @@ private:
         float rotationAngle;
     };
     
+    struct ControlPointMotion {
+        glm::vec3 centerOfRotation;
+        float radius;
+        float angle;
+        float rotationSpeed;
+    };
+    
     struct BezierCurve {
         glm::mat4 basisMatrix; // B(t)
         glm::mat4 derivMatrix; // B'(t), derivative matrix
+        
+        // Control Points
+        glm::vec3 p0;
+        glm::vec3 p1;
+        glm::vec3 p2;
+        glm::vec3 p3;
+        
+        // Control Point Motion
+        ControlPointMotion p0_motion;
+        ControlPointMotion p1_motion;
+        ControlPointMotion p2_motion;
+        ControlPointMotion p3_motion;
     };
     BezierCurve m_tornadoCurve;
     
@@ -101,14 +123,21 @@ private:
         double secondsSinceLastUpdate
     );
     
-    void setTornadoCurveFromControlPoints (
-        const vec3 & p0,
-        const vec3 & p1,
-        const vec3 & p2,
-        const vec3 & p3
-    );
+    void initTornadoCurve();
+    
+    void updateBezierMatricesFromControlPoint();
     
     VertexAttributeDescriptor getVertexDescriptorForParticlePositions() const;
+    
+    void updateTornadoCurveMotion (
+        double secondsSinceLastUpdate
+    );
+    
+    void updateControlPointPosition (
+        glm::vec3 & pointPosition,
+        ControlPointMotion & pointMotion,
+        float secondsSinceLastUpdate
+    );
     
 }; // end class ParticleSystemImpl
 
@@ -133,11 +162,7 @@ ParticleSystemImpl::ParticleSystemImpl (
     
     setStaticUniformData();
     
-    glm::vec3 p0(0.0f, -18.0f, -50.0f);
-    glm::vec3 p1(4.0f,  -10.0f,  -50.0f);
-    glm::vec3 p2(-3.0f, 2.0f, -10.0f);
-    glm::vec3 p3(0.0f, 8.0f,  -10.0f);
-    setTornadoCurveFromControlPoints(p0, p1, p2, p3);
+    initTornadoCurve();
 }
 
 //---------------------------------------------------------------------------------------
@@ -293,17 +318,71 @@ void ParticleSystemImpl::setupVertexAttribMappings()
 
 
 //---------------------------------------------------------------------------------------
-void ParticleSystemImpl::setTornadoCurveFromControlPoints (
-    const vec3 & p0,
-    const vec3 & p1,
-    const vec3 & p2,
-    const vec3 & p3
+void ParticleSystemImpl::initTornadoCurve ()
+{
+    // Bezier curve control points
+    m_tornadoCurve.p0 = glm::vec3(0.0f, -18.0f, -50.0f);
+    m_tornadoCurve.p1 = glm::vec3(4.0f,  -10.0f,  -50.0f);
+    m_tornadoCurve.p2 = glm::vec3(-3.0f, 2.0f, -10.0f);
+    m_tornadoCurve.p3 = glm::vec3(0.0f, 8.0f,  -10.0f);
+
+    ControlPointMotion & p0_motion = m_tornadoCurve.p0_motion;
+    p0_motion.centerOfRotation = m_tornadoCurve.p0;
+    p0_motion.radius = 3.0f;
+    p0_motion.angle = 0.0f;
+    p0_motion.rotationSpeed = 1.0f;
+    
+    ControlPointMotion & p3_motion = m_tornadoCurve.p3_motion;
+    p3_motion.centerOfRotation = m_tornadoCurve.p3;
+    p3_motion.radius = 2.0f;
+    p3_motion.angle = 0.0f;
+    p3_motion.rotationSpeed = 0.6f;
+}
+
+
+//---------------------------------------------------------------------------------------
+void ParticleSystemImpl::updateControlPointPosition (
+    glm::vec3 & pointPosition,
+    ControlPointMotion & pointMotion,
+    float secondsSinceLastUpdate
 ) {
+    float radius = pointMotion.radius;
+    float newAngle = pointMotion.angle + (pointMotion.rotationSpeed * secondsSinceLastUpdate);
+    
+    glm::vec3 x_dir(1.0f, 0.0f, 0.0f);
+    glm::vec3 newPosition = radius * x_dir;
+    newPosition = rotateY(newPosition, newAngle);
+    newPosition += pointMotion.centerOfRotation;
+    
+    pointPosition = newPosition;
+    pointMotion.angle = newAngle;
+}
+
+//---------------------------------------------------------------------------------------
+void ParticleSystemImpl::updateTornadoCurveMotion (
+    double secondsSinceLastUpdate
+) {
+    updateControlPointPosition(m_tornadoCurve.p0,
+                               m_tornadoCurve.p0_motion,
+                               secondsSinceLastUpdate);
+    
+    updateControlPointPosition(m_tornadoCurve.p3,
+                               m_tornadoCurve.p3_motion,
+                               secondsSinceLastUpdate);
+    
+    // Recompute Bezier curve matrices
+    updateBezierMatricesFromControlPoint();
+}
+
+
+//---------------------------------------------------------------------------------------
+void ParticleSystemImpl::updateBezierMatricesFromControlPoint()
+{
     glm::mat4 pMatrix = {
-        glm::vec4(p0, 0.0f),
-        glm::vec4(p1, 0.0f),
-        glm::vec4(p2, 0.0f),
-        glm::vec4(p3, 0.0f)
+        glm::vec4(m_tornadoCurve.p0, 0.0f),
+        glm::vec4(m_tornadoCurve.p1, 0.0f),
+        glm::vec4(m_tornadoCurve.p2, 0.0f),
+        glm::vec4(m_tornadoCurve.p3, 0.0f)
     };
     
     glm::mat4 coefficientMatrix = {
@@ -357,13 +436,13 @@ void ParticleSystemImpl::updateUniforms (
 ) {
     glUniform1f(m_uniformLocations.deltaTime, secondsSinceLastUpdate);
     
-    glUniformMatrix4fv(m_uniformLocations.basisMatrix, 1, GL_FALSE, &m_tornadoCurve.basisMatrix[0][0]);
-
-    glUniformMatrix4fv(m_uniformLocations.derivMatrix, 1, GL_FALSE, &m_tornadoCurve.derivMatrix[0][0]);
-    
     glUniform1f(m_uniformLocations.particleRandomness, m_particleRandomness);
     
     glUniform1f(m_uniformLocations.numActiveParticles, m_numActiveParticles);
+    
+    glUniformMatrix4fv(m_uniformLocations.basisMatrix, 1, GL_FALSE, &m_tornadoCurve.basisMatrix[0][0]);
+    
+    glUniformMatrix4fv(m_uniformLocations.derivMatrix, 1, GL_FALSE, &m_tornadoCurve.derivMatrix[0][0]);
     
     CHECK_GL_ERRORS;
 }
@@ -372,6 +451,8 @@ void ParticleSystemImpl::updateUniforms (
 void ParticleSystemImpl::update (
     double secondsSinceLastUpdate
 ) {
+    updateTornadoCurveMotion(secondsSinceLastUpdate);
+    
     m_shaderProgram_TFUpdate.enable();
     updateUniforms(secondsSinceLastUpdate);
     
