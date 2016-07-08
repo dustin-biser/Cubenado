@@ -31,15 +31,15 @@ static const GLuint UniformBindingIndex_Transforms = 0;
 
 
 struct LightSource {
-    glm::vec4 position;      // Light position in eye coordinate space.
-    glm::vec4 rgbIntensity;  // Light intensity for each RGB component.
+    glm::vec4 position;     // Light position in eye coordinate space.
+    glm::vec4 rgbIntensity; // Light intensity for each RGB component.
 };
 static const GLuint UniformBindingIndex_LightSource = 1;
 
 
 struct Material {
-    glm::vec4 Ka;        // Coefficients of ambient reflectivity for each RGB component.
-    glm::vec4 Kd;        // Coefficients of diffuse reflectivity for each RGB component.
+    glm::vec4 Ka; // Coefficients of ambient reflectivity
+    glm::vec4 Kd; // Coefficients of diffuse reflectivity
 };
 static const GLuint UniformBindingIndex_Matrial = 2;
 
@@ -83,6 +83,8 @@ typedef GLushort Index;
                                      withVao: (GLuint)vao;
 
 - (void) setViewportIfFramebuferSizeChanged: (FramebufferSize)framebufferSize;
+
+- (void) setDefaultGLState;
 
 @end // @interface CubenadoRenderer
     
@@ -164,19 +166,7 @@ typedef GLushort Index;
     
     [self loadUniforms];
     
-    
-    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-    glClearDepthf(1.0f);
-    
-    glEnable(GL_DEPTH_TEST);
-    glDepthMask(GL_TRUE);
-    glDepthFunc(GL_LEQUAL);
-    glDepthRangef(0.0f, 1.0f);
-    
-    glCullFace(GL_BACK);
-    glFrontFace(GL_CCW);
-    CHECK_GL_ERRORS;
-    
+    [self setDefaultGLState];
     
     const uint numActiveParticles = numCubes;
     const uint maxParticles = maxCubes;
@@ -206,6 +196,26 @@ typedef GLushort Index;
     }
 }
 
+//---------------------------------------------------------------------------------------
+- (void) setDefaultGLState
+{
+    // Clear values
+    glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+    glClearDepthf(1.0f);
+    
+    // Depth settings
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_TRUE);
+    glDepthFunc(GL_LEQUAL);
+    glDepthRangef(0.0f, 1.0f);
+    
+    // Enable backface culling
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
+    
+    CHECK_GL_ERRORS;
+}
 
 //---------------------------------------------------------------------------------------
 - (void) loadCubeVertexData: (uint) maxCubes
@@ -257,6 +267,7 @@ typedef GLushort Index;
         size_t numBytes = vertexData.size() * sizeof(Vertex);
         glBufferData(GL_ARRAY_BUFFER, numBytes, vertexData.data(), GL_STATIC_DRAW);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
+        
         CHECK_GL_ERRORS;
     }
     
@@ -282,6 +293,7 @@ typedef GLushort Index;
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _indexBuffer_cube);
         size_t numBytes = indexData.size() * sizeof(Index);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, numBytes, indexData.data(), GL_STATIC_DRAW);
+        
         CHECK_GL_ERRORS;
     }
     
