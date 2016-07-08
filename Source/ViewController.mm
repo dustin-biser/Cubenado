@@ -99,6 +99,7 @@
     approxframebufferSize.width = static_cast<GLint>(frameSize.width);
     approxframebufferSize.height = static_cast<GLint>(frameSize.height);
     
+    
     // Initialize CubenadoRender with number of cubes from UI Slider
     const uint numCubes = static_cast<uint>(_slider_numCubes.value);
     const float cubeRandomness = _slider_cubeRandomness.value;
@@ -283,11 +284,7 @@
 // View has requested a refresh, so draw next frame here
 - (void)glkView:(GLKView *)view drawInRect:(CGRect)rect
 {
-    FramebufferSize framebufferSize;
-    framebufferSize.width = static_cast<GLint>(_glkView.drawableWidth);
-    framebufferSize.height = static_cast<GLint>(_glkView.drawableHeight);
-    
-    [_cubenadoRenderer renderwithFramebufferSize: framebufferSize];
+    [_cubenadoRenderer renderWithGLKView: view];
 }
 
 

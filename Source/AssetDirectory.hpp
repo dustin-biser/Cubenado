@@ -1,5 +1,5 @@
 //
-//  AssetDirectory.h
+//  AssetDirectory.hpp
 //
 
 #pragma once

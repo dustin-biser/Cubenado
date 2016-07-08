@@ -5,6 +5,10 @@
 #import <Foundation/NSObject.h>
 #import <Foundation/NSDate.h>
 
+// Forward declaration
+@class GLKView;
+
+
 struct FramebufferSize {
     GLint width;
     GLint height;
@@ -19,7 +23,7 @@ typedef struct FramebufferSize FramebufferSize;
                                maxCubes: (uint) maxCubes
                          cubeRandomness: (float) cubeRandomness;
 
-- (void) renderwithFramebufferSize: (FramebufferSize)framebufferSize;
+- (void) renderWithGLKView: (GLKView *)glkView;
 
 - (void) update:(NSTimeInterval)timeSinceLastUpdate;
 

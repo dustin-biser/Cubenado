@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0C1A47F11D2F3E65006F58D9 /* ShadowMapVS.glsl in Resources */ = {isa = PBXBuildFile; fileRef = 0C1A47F01D2F3E65006F58D9 /* ShadowMapVS.glsl */; };
+		0C1A47F31D2F3E78006F58D9 /* ShadowMapFS.glsl in Resources */ = {isa = PBXBuildFile; fileRef = 0C1A47F21D2F3E78006F58D9 /* ShadowMapFS.glsl */; };
 		0C233CD71D2754FC00977B5F /* TornadoParticleSimVS.glsl in Resources */ = {isa = PBXBuildFile; fileRef = 0C233CD61D2754FC00977B5F /* TornadoParticleSimVS.glsl */; };
 		0C233CDF1D275E8200977B5F /* ShaderProgram.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0C233CDD1D275E8200977B5F /* ShaderProgram.cpp */; };
 		0C233CE11D27875300977B5F /* TornadoParticleSimFS.glsl in Resources */ = {isa = PBXBuildFile; fileRef = 0C233CE01D27875300977B5F /* TornadoParticleSimFS.glsl */; };
@@ -27,6 +29,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0C1A47F01D2F3E65006F58D9 /* ShadowMapVS.glsl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = ShadowMapVS.glsl; sourceTree = "<group>"; };
+		0C1A47F21D2F3E78006F58D9 /* ShadowMapFS.glsl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = ShadowMapFS.glsl; sourceTree = "<group>"; };
 		0C233CD61D2754FC00977B5F /* TornadoParticleSimVS.glsl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = TornadoParticleSimVS.glsl; sourceTree = "<group>"; };
 		0C233CD81D275B0700977B5F /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = Source/Data/Info.plist; sourceTree = SOURCE_ROOT; };
 		0C233CDD1D275E8200977B5F /* ShaderProgram.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ShaderProgram.cpp; sourceTree = "<group>"; };
@@ -81,6 +85,8 @@
 				0CE3D2B51D248EEB00FFB2B5 /* CubeVS.glsl */,
 				0C233CD61D2754FC00977B5F /* TornadoParticleSimVS.glsl */,
 				0C233CE01D27875300977B5F /* TornadoParticleSimFS.glsl */,
+				0C1A47F01D2F3E65006F58D9 /* ShadowMapVS.glsl */,
+				0C1A47F21D2F3E78006F58D9 /* ShadowMapFS.glsl */,
 			);
 			path = Assets;
 			sourceTree = "<group>";
@@ -204,7 +210,9 @@
 				0CEB671F1D247DFA00A69E9A /* LaunchScreen.storyboard in Resources */,
 				0C233CD71D2754FC00977B5F /* TornadoParticleSimVS.glsl in Resources */,
 				0C233CE11D27875300977B5F /* TornadoParticleSimFS.glsl in Resources */,
+				0C1A47F11D2F3E65006F58D9 /* ShadowMapVS.glsl in Resources */,
 				0CE3D2B61D248EEB00FFB2B5 /* CubeFS.glsl in Resources */,
+				0C1A47F31D2F3E78006F58D9 /* ShadowMapFS.glsl in Resources */,
 				0CE3D2B71D248EEB00FFB2B5 /* CubeVS.glsl in Resources */,
 				EF669886CA79788451A32520 /* Assets.xcassets in Resources */,
 			);

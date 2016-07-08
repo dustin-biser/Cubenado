@@ -64,6 +64,7 @@ const char * getErrorString (
     return result;
 }
 
+
 //---------------------------------------------------------------------------------------
 void checkGLErrors (
     const char * currentFileName,
@@ -97,3 +98,15 @@ void checkGLErrors (
     }
 }
 
+
+//---------------------------------------------------------------------------------------
+void checkFramebufferCompleteness()
+{
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+        stringstream error;
+        error << "Framebuffer Complete Error: ";
+        error << getErrorString(status) << endl;;
+        throw;
+    }
+}

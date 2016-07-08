@@ -15,8 +15,8 @@ out vec4 fragColor;
 
 layout(std140)
 uniform LightSource {
-    vec3 position;      // Light position in eye coordinate space.
-    vec3 rgbIntensity;  // Light intensity for each RGB component.
+    vec3 position_eyeSpace;
+    vec3 rgbIntensity;
 } lightSource;
 
 
@@ -31,7 +31,7 @@ void main() {
     vec3 position = fsIn.position.xyz;
     vec3 normal = normalize(fsIn.normal.xyz);
     
-    vec3 l = normalize(lightSource.position - position); // Direction from fragment to light source.
+    vec3 l = normalize(lightSource.position_eyeSpace - position); // Direction from fragment to light source.
     
     const vec3 ambientIntensity = vec3(0.01f, 0.01f, 0.01f);
     vec3 ambient = ambientIntensity * material.Ka;

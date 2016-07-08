@@ -6,6 +6,8 @@
 #include "AssetDirectory.hpp"
 #import <OpenGLES/ES3/gl.h>
 
+#import <glm/glm.hpp>
+
 // Forward declaration
 class ParticleSystemImpl;
 
@@ -53,6 +55,8 @@ public:
         double secondsSinceLastUpdate
     );
     
+    
+    glm::vec3 getCenterOfTornado() const;
     
 private:
     ParticleSystemImpl * impl;

@@ -4,6 +4,8 @@
 
 #import "CubenadoRenderer.h"
 
+#import <GLKit/GLKit.h>
+
 #import <vector>
 using std::vector;
 
@@ -30,8 +32,8 @@ static const GLuint UniformBindingIndex_Transforms = 0;
 
 
 struct LightSource {
-    glm::vec4 position;     // Light position in eye coordinate space.
-    glm::vec4 rgbIntensity; // Light intensity for each RGB component.
+    glm::vec4 position_eyeSpace;
+    glm::vec4 rgbIntensity;
 };
 static const GLuint UniformBindingIndex_LightSource = 1;
 
@@ -74,7 +76,9 @@ typedef GLushort Index;
 
 - (void) initVertexAttribMappings;
 
-- (void) loadUniforms;
+- (void) loadCubeUniforms;
+
+- (void) loadShadowMapUniforms;
 
 - (void) setUBOBindings;
 
@@ -84,6 +88,14 @@ typedef GLushort Index;
 - (void) setViewportIfFramebuferSizeChanged: (FramebufferSize)framebufferSize;
 
 - (void) setDefaultGLState;
+
+- (void) initShadowPassResources;
+
+- (void) initShadowMapMatrices;
+
+- (void) shadowMapPass;
+    
+- (void) renderCubesWithGLKView: (GLKView *)glkView;
 
 @end // @interface CubenadoRenderer
     
@@ -101,7 +113,7 @@ typedef GLushort Index;
     GLuint _vbo_cube;
     GLuint _indexBuffer_cube;
     GLsizei _numCubeIndices;
-    ShaderProgram _shaderProgram_Cube;
+    ShaderProgram _shaderProgram_cube;
     
     // Uniform Buffer Data
     GLuint _ubo;
@@ -124,6 +136,24 @@ typedef GLushort Index;
     GLint _uniformLocation_cubeRandomness;
     float _cubeRandomness;
     GLuint _vbo_orientation;
+    
+    
+    struct ShadowMapUniformLocations
+    {
+        GLint modelMatrix;
+        GLint lightViewMatrix;
+        GLint lightProjectMatrix;
+        GLint cubeRandomness;
+    };
+    
+    // Shadow map
+    GLuint _texture_shadowMap;
+    CGSize _shadowMapSize;
+    GLuint _framebuffer_shadowMap;
+    ShaderProgram _shaderProgram_shadowMap;
+    glm::mat4 _lightViewMatrix;
+    glm::mat4 _lightProjectMatrix;
+    ShadowMapUniformLocations _uniformLocations_shadowMap;
 }
 
 
@@ -163,7 +193,7 @@ typedef GLushort Index;
     
     [self setUBOBindings];
     
-    [self loadUniforms];
+    [self loadCubeUniforms];
     
     [self setDefaultGLState];
     
@@ -173,6 +203,9 @@ typedef GLushort Index;
                                                        numActiveParticles,
                                                        maxParticles,
                                                        cubeRandomness);
+    
+    [self initShadowMapMatrices];
+    [self loadShadowMapUniforms];
 }
 
 //---------------------------------------------------------------------------------------
@@ -379,23 +412,114 @@ typedef GLushort Index;
 
 
 //---------------------------------------------------------------------------------------
-- (void)loadShaders
+- (void) initShadowPassResources
 {
-    //-- Create Cube Shader:
-    _shaderProgram_Cube.generateProgramObject();
-    _shaderProgram_Cube.attachVertexShader(_assetDirectory.at("CubeVS.glsl"));
-    _shaderProgram_Cube.attachFragmentShader(_assetDirectory.at("CubeFS.glsl"));
-    _shaderProgram_Cube.link();
+    // Create Shadow map texture
+    {
+        glGenTextures(1, &_texture_shadowMap);
+        
+        glBindTexture(GL_TEXTURE_2D, _texture_shadowMap);
+        
+        //FIXME: warning, at program startup framebufferSize is only a fraction of actual size
+        // Should create texture at first run of CubenadoRenderer:update:
+        _shadowMapSize.width = 2 * _framebufferSize.width;
+        _shadowMapSize.height = 2 * _framebufferSize.height;
+        
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, _shadowMapSize.width,
+                     _shadowMapSize.height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+        
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LESS);
+        
+        glBindTexture(GL_TEXTURE_2D, 0);
+        CHECK_GL_ERRORS;
+    }
     
     
-    // Query Cube Randomness uniform location
-    _uniformLocation_cubeRandomness =
-        glGetUniformLocation(_shaderProgram_Cube, "cubeRandomness");
+    // Create and set up the framebuffer object
+    {
+        glGenFramebuffers(1, &_framebuffer_shadowMap);
+        glBindFramebuffer(GL_FRAMEBUFFER, _framebuffer_shadowMap);
+        GLint level0 = 0;
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
+                               _texture_shadowMap, level0);
+        
+        CHECK_FRAMEBUFFER_COMPLETENESS;
+        
+        // Prevent rendering to color buffers.
+        GLenum drawBuffers[] = { GL_NONE };
+        glDrawBuffers(1, drawBuffers);
+        
+        // Revert back to default framebuffer.
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        CHECK_GL_ERRORS;
+    }
+    
 }
 
 
 //---------------------------------------------------------------------------------------
-- (void) loadUniforms
+- (void) initShadowMapMatrices
+{
+    glm::vec3 eye = _lightSource.position_eyeSpace;
+    glm::vec3 center = _particleSystem->getCenterOfTornado();
+    glm::vec3 up(0.0f, 1.0f, 0.0);
+    
+    _lightViewMatrix = glm::lookAt(eye, center, up);
+    
+    _lightProjectMatrix = glm::ortho(-50.0f, 50.0f, -50.0f, 50.0f, 0.1f, 200.0f);
+
+}
+
+//---------------------------------------------------------------------------------------
+- (void) loadShaders
+{
+    // Create Cube Shader Program
+    {
+        _shaderProgram_cube.generateProgramObject();
+        _shaderProgram_cube.attachVertexShader(_assetDirectory.at("CubeVS.glsl"));
+        _shaderProgram_cube.attachFragmentShader(_assetDirectory.at("CubeFS.glsl"));
+        _shaderProgram_cube.link();
+        
+        
+        // Query Cube Randomness uniform location
+        _uniformLocation_cubeRandomness =
+            glGetUniformLocation(_shaderProgram_cube, "cubeRandomness");
+    }
+    
+    
+    // Create Shadow Map Shader Program
+    {
+        _shaderProgram_shadowMap.generateProgramObject();
+        _shaderProgram_shadowMap.attachVertexShader(_assetDirectory.at("ShadowMapVS.glsl"));
+        _shaderProgram_shadowMap.attachFragmentShader(_assetDirectory.at("ShadowMapFS.glsl"));
+        _shaderProgram_shadowMap.link();
+        
+        // Query uniform locations
+        _uniformLocations_shadowMap.cubeRandomness =
+            glGetUniformLocation(_shaderProgram_shadowMap, "cubeRandomness");
+        
+        _uniformLocations_shadowMap.modelMatrix =
+            glGetUniformLocation(_shaderProgram_shadowMap, "modelMatix");
+        
+        _uniformLocations_shadowMap.lightViewMatrix =
+            glGetUniformLocation(_shaderProgram_shadowMap, "lightViewMatix");
+        
+        _uniformLocations_shadowMap.lightProjectMatrix =
+            glGetUniformLocation(_shaderProgram_shadowMap, "lightProjectMatix");
+    }
+}
+
+
+//---------------------------------------------------------------------------------------
+- (void) loadCubeUniforms
 {
     float fovy = 45.0f;
     float aspect = static_cast<float>(_framebufferSize.width) / _framebufferSize.height;
@@ -425,7 +549,7 @@ typedef GLushort Index;
     
     // Convert lightSource position to EyeSpace.
     glm::vec4 lightPosition = glm::vec4(-2.0f, 5.0f, 5.0f, 1.0f);
-    _lightSource.position = viewMatrix * lightPosition;
+    _lightSource.position_eyeSpace = viewMatrix * lightPosition;
     _lightSource.rgbIntensity = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
     
     
@@ -456,19 +580,37 @@ typedef GLushort Index;
     }
 }
 
+//---------------------------------------------------------------------------------------
+- (void) loadShadowMapUniforms
+{
+    _shaderProgram_shadowMap.enable();
+    
+    glUniformMatrix4fv(_uniformLocations_shadowMap.modelMatrix, 1, GL_FALSE,
+                       &_sceneTransforms.modelMatrix[0][0]);
+    
+    glUniformMatrix4fv(_uniformLocations_shadowMap.lightViewMatrix, 1, GL_FALSE,
+                       &_lightViewMatrix[0][0]);
+    
+    glUniformMatrix4fv(_uniformLocations_shadowMap.lightProjectMatrix, 1, GL_FALSE,
+                       &_lightProjectMatrix[0][0]);
+    
+    
+    CHECK_GL_ERRORS;
+}
+
 
 //---------------------------------------------------------------------------------------
 - (void) setUBOBindings
 {
     // Query uniform block indices
-    GLuint blockIndex0 = glGetUniformBlockIndex(_shaderProgram_Cube, "Transforms");
-    GLuint blockIndex1 = glGetUniformBlockIndex(_shaderProgram_Cube, "LightSource");
-    GLuint blockIndex2 = glGetUniformBlockIndex(_shaderProgram_Cube, "Material");
+    GLuint blockIndex0 = glGetUniformBlockIndex(_shaderProgram_cube, "Transforms");
+    GLuint blockIndex1 = glGetUniformBlockIndex(_shaderProgram_cube, "LightSource");
+    GLuint blockIndex2 = glGetUniformBlockIndex(_shaderProgram_cube, "Material");
     
     // Bind shader block index to uniform buffer binding index
-    glUniformBlockBinding(_shaderProgram_Cube, blockIndex0, UniformBindingIndex_Transforms);
-    glUniformBlockBinding(_shaderProgram_Cube, blockIndex1, UniformBindingIndex_LightSource);
-    glUniformBlockBinding(_shaderProgram_Cube, blockIndex2, UniformBindingIndex_Matrial);
+    glUniformBlockBinding(_shaderProgram_cube, blockIndex0, UniformBindingIndex_Transforms);
+    glUniformBlockBinding(_shaderProgram_cube, blockIndex1, UniformBindingIndex_LightSource);
+    glUniformBlockBinding(_shaderProgram_cube, blockIndex2, UniformBindingIndex_Matrial);
     
     GLint uniformBufferOffsetAlignment;
     glGetIntegerv(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT, &uniformBufferOffsetAlignment);
@@ -521,31 +663,15 @@ typedef GLushort Index;
 
 
 //---------------------------------------------------------------------------------------
-- (void) updateUniforms
+- (void) updatePerFrameUniforms
 {
-    glBindBuffer(GL_UNIFORM_BUFFER, _ubo);
-    GLvoid * pUniformBuffer = glMapBufferRange(GL_UNIFORM_BUFFER, 0, _uboBufferSize,
-                                               GL_MAP_WRITE_BIT);
-    // Copy Transform data to uniform buffer.
-    memcpy((char *)pUniformBuffer + _uniformBufferDataOffset_Transforms,
-           &_sceneTransforms, sizeof(_sceneTransforms));
-    
-    // Copy LightSource data to uniform buffer.
-    memcpy((char *)pUniformBuffer + _uniformBufferDataOffset_LightSource,
-           &_lightSource, sizeof(_lightSource));
-    
-    // Copy Material data to uniform buffer.
-    memcpy((char *)pUniformBuffer + _uniformBufferDataOffset_Material,
-           &_material, sizeof(_material));
-    
-    glUnmapBuffer(GL_UNIFORM_BUFFER);
-    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+    // Update cube randomness uniform
+    _shaderProgram_cube.enable();
+    glUniform1f(_uniformLocation_cubeRandomness, _cubeRandomness);
     CHECK_GL_ERRORS;
     
-    
-    // Update cube randomness uniform
-    _shaderProgram_Cube.enable();
-    glUniform1f(_uniformLocation_cubeRandomness, _cubeRandomness);
+    _shaderProgram_shadowMap.enable();
+    glUniform1f(_uniformLocations_shadowMap.cubeRandomness, _cubeRandomness);
     CHECK_GL_ERRORS;
 }
 
@@ -576,10 +702,10 @@ typedef GLushort Index;
 
 
 //---------------------------------------------------------------------------------------
-// Call once per frame, before CubenadoRenderer:renderWithFrameBuffer:.
+// Call once per frame, before CubenadoRenderer:renderWithFrameBuffer:
 - (void) update:(NSTimeInterval)timeSinceLastUpdate;
 {
-    [self updateUniforms];
+    [self updatePerFrameUniforms];
     
     _particleSystem->update(timeSinceLastUpdate);
 }
@@ -599,18 +725,63 @@ typedef GLushort Index;
 
 
 //---------------------------------------------------------------------------------------
-// Call once per frame, after CubenadoRenderer:update:.
-- (void) renderwithFramebufferSize: (FramebufferSize)framebufferSize
+// Call once per frame, after CubenadoRenderer:update:
+- (void) renderWithGLKView: (GLKView *)glkView;
 {
-    [self setViewportIfFramebuferSizeChanged: framebufferSize];
-    
-    // Clear framebuffer
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
     [self setParticlePositionVboAttribMapping: _particleSystem.get()
                                       withVao: _vao_cube];
     
-    _shaderProgram_Cube.enable();
+    [self shadowMapPass];
+    
+    [self renderCubesWithGLKView: glkView];
+}
+
+
+//---------------------------------------------------------------------------------------
+- (void) shadowMapPass
+{
+    glViewport(0, 0, _shadowMapSize.width, _shadowMapSize.height);
+    
+    glBindFramebuffer(GL_FRAMEBUFFER, _framebuffer_shadowMap);
+    
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, _texture_shadowMap);
+    
+    glClear(GL_DEPTH_BUFFER_BIT);
+    
+    glCullFace(GL_FRONT);
+    
+    _shaderProgram_shadowMap.enable();
+    glBindVertexArray(_vao_cube);
+    
+    const GLuint numInstances = _particleSystem->numActiveParticles();
+    glDrawElementsInstanced(GL_TRIANGLES, _numCubeIndices, GL_UNSIGNED_SHORT, nullptr,
+                            numInstances);
+    
+    
+    // Restore default settings.
+    glCullFace(GL_BACK);
+    CHECK_GL_ERRORS;
+}
+
+
+//---------------------------------------------------------------------------------------
+- (void) renderCubesWithGLKView: (GLKView *)glkView
+{
+    FramebufferSize framebufferSize;
+    framebufferSize.width = static_cast<GLint>(glkView.drawableWidth);
+    framebufferSize.height = static_cast<GLint>(glkView.drawableHeight);
+    
+    [self setViewportIfFramebuferSizeChanged: framebufferSize];
+    
+    // Bind the GlkView framebuffer for rendering.
+    [glkView bindDrawable];
+    
+    // Clear framebuffer
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    
+    _shaderProgram_cube.enable();
     glBindVertexArray(_vao_cube);
     glBindBuffer(GL_UNIFORM_BUFFER, _ubo);
     
@@ -619,6 +790,7 @@ typedef GLushort Index;
                             numInstances);
                             
     CHECK_GL_ERRORS;
+    
 }
 
 

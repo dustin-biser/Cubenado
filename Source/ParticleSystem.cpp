@@ -3,6 +3,7 @@
 //
 
 #import "ParticleSystem.hpp"
+using glm::vec3;
 
 #import <vector>
 using std::vector;
@@ -13,8 +14,6 @@ using std::sin;
 #import <algorithm>
 using std::min;
 
-#import <glm/glm.hpp>
-using glm::vec3;
 #import <glm/gtx/rotate_vector.hpp>
 using glm::rotateY;
 
@@ -533,4 +532,16 @@ void ParticleSystem::setParticleRandomness (
     float x
 ) {
     impl->m_particleRandomness = x;
+}
+
+
+//---------------------------------------------------------------------------------------
+glm::vec3 ParticleSystem::getCenterOfTornado() const
+{
+    // Return center between Bezier control points p0 and p3.
+    
+    glm::vec3 p0 = impl->m_tornadoCurve.p0;
+    glm::vec3 p3 = impl->m_tornadoCurve.p3;
+    
+    return p0 + ((p3 - p0) * 0.5f);
 }
