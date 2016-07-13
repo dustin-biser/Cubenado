@@ -28,8 +28,8 @@ uniform float cubeRandomness;  // [0,1] degree of randomness.
 
 
 out VsOutFsIn {
-    vec4 position;
-    vec4 normal;
+    vec4 position_worldSpace;
+    vec4 normal_worldSpace;
 } vsOut;
 
 
@@ -75,11 +75,11 @@ void main() {
     
     pos = (modelMatrix * pos) + vec4(instancePos, 1.0);
     
-    // Transform position to EyeSpace.
-    vsOut.position = viewMatrix * pos;
+    // World space position.
+    vsOut.position_worldSpace = pos;
     
-    // Transform normal to EyeSpace.
-    vsOut.normal = normalMatrix * n;
+    // Transform normal to world space.
+    vsOut.normal_worldSpace = normalMatrix * n;
     
-    gl_Position = projectMatrix * (vsOut.position);
+    gl_Position = projectMatrix * (viewMatrix * pos);
 }

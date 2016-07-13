@@ -32,7 +32,7 @@ static const GLuint UniformBindingIndex_Transforms = 0;
 
 
 struct LightSource {
-    glm::vec4 position_eyeSpace;
+    glm::vec4 position_worldSpace;
     glm::vec4 rgbIntensity;
 };
 static const GLuint UniformBindingIndex_LightSource = 1;
@@ -468,7 +468,7 @@ typedef GLushort Index;
 //---------------------------------------------------------------------------------------
 - (void) initShadowMapMatrices
 {
-    glm::vec3 eye = _lightSource.position_eyeSpace;
+    glm::vec3 eye = _lightSource.position_worldSpace;
     glm::vec3 center = _particleSystem->getCenterOfTornado();
     glm::vec3 up(0.0f, 1.0f, 0.0);
     
@@ -541,15 +541,12 @@ typedef GLushort Index;
     _sceneTransforms.viewMatrix = viewMatrix;
     _sceneTransforms.projectMatrix = projectionMatrix;
     
-    // modelViewMatrix scale is uniform, so
-    // inverse = transpose -> normalMatrix = modelViewMatrix
-    glm::mat4 modelViewMatrix = viewMatrix * modelMatrix;
-    _sceneTransforms.normalMatrix = glm::mat3(modelViewMatrix);
+    // modelViewMatrix scale is uniform, so inverse == transpose
+    _sceneTransforms.normalMatrix = modelMatrix;
     
     
     // Convert lightSource position to EyeSpace.
-    glm::vec4 lightPosition = glm::vec4(-2.0f, 5.0f, 5.0f, 1.0f);
-    _lightSource.position_eyeSpace = viewMatrix * lightPosition;
+    _lightSource.position_worldSpace = glm::vec4(-2.0f, 5.0f, 5.0f, 1.0f);
     _lightSource.rgbIntensity = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
     
     

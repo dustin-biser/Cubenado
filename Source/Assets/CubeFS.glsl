@@ -6,8 +6,8 @@
 precision mediump float;
 
 in VsOutFsIn {
-    vec4 position;
-    vec4 normal;
+    vec4 position_worldSpace;
+    vec4 normal_worldSpace;
 } fsIn;
 
 out vec4 fragColor;
@@ -15,7 +15,7 @@ out vec4 fragColor;
 
 layout(std140)
 uniform LightSource {
-    vec3 position_eyeSpace;
+    vec3 position_worldSpace;
     vec3 rgbIntensity;
 } lightSource;
 
@@ -28,10 +28,11 @@ uniform Material {
 
 
 void main() {
-    vec3 position = fsIn.position.xyz;
-    vec3 normal = normalize(fsIn.normal.xyz);
+    vec3 position = fsIn.position_worldSpace.xyz;
+    vec3 normal = normalize(fsIn.normal_worldSpace.xyz);
     
-    vec3 l = normalize(lightSource.position_eyeSpace - position); // Direction from fragment to light source.
+    // Direction from fragment to light source.
+    vec3 l = normalize(lightSource.position_worldSpace - position);
     
     const vec3 ambientIntensity = vec3(0.01f, 0.01f, 0.01f);
     vec3 ambient = ambientIntensity * material.Ka;
