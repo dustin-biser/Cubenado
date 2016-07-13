@@ -2,11 +2,8 @@
 //  CubenadoRenderer.h
 //
 
-#import <Foundation/Foundation.h>
-
-// Forward declaration
-class ParticleSystem;
-
+#import <Foundation/NSObject.h>
+#import <Foundation/NSDate.h>
 
 struct FramebufferSize {
     GLint width;

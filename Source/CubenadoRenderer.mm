@@ -12,7 +12,6 @@ using std::unordered_map;
 
 #import <glm/glm.hpp>
 #import <glm/gtc/matrix_transform.hpp>
-#import <glm/gtc/matrix_transform.hpp>
 
 #import "ShaderProgram.hpp"
 #import "AssetDirectory.hpp"
@@ -121,7 +120,7 @@ typedef GLushort Index;
         float maxAngle;
     };
     
-    // Cube orientation based on randomness
+    // Cube orientation based on cube randomness
     GLint _uniformLocation_cubeRandomness;
     float _cubeRandomness;
     GLuint _vbo_orientation;
@@ -184,7 +183,7 @@ typedef GLushort Index;
             [[NSBundle mainBundle] URLsForResourcesWithExtension:@"glsl"
                                                     subdirectory:nil];
     
-    // Map file name to file path and place in assetDirectory.
+    // Map file name to file path and insert into _assetDirectory.
     std::pair<FileName, PathToFile> pair;
     for(NSURL * url in glslAssets) {
         NSString * fileName = [[url path] lastPathComponent];
