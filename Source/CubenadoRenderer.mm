@@ -197,6 +197,9 @@ typedef GLushort Index;
     
     [self setDefaultGLState];
     
+    [self initShadowPassResources];
+    
+    
     const uint numActiveParticles = numCubes;
     const uint maxParticles = maxCubes;
     _particleSystem = std::make_shared<ParticleSystem>(_assetDirectory,
@@ -205,6 +208,7 @@ typedef GLushort Index;
                                                        cubeRandomness);
     
     [self initShadowMapMatrices];
+    
     [self loadShadowMapUniforms];
 }
 
@@ -422,11 +426,11 @@ typedef GLushort Index;
         
         //FIXME: warning, at program startup framebufferSize is only a fraction of actual size
         // Should create texture at first run of CubenadoRenderer:update:
-        _shadowMapSize.width = 2 * _framebufferSize.width;
-        _shadowMapSize.height = 2 * _framebufferSize.height;
+        _shadowMapSize.width = 2.0f * _framebufferSize.width;
+        _shadowMapSize.height = 2.0f * _framebufferSize.height;
         
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, _shadowMapSize.width,
-                     _shadowMapSize.height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, _shadowMapSize.width,
+                     _shadowMapSize.height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, NULL);
         
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -447,6 +451,7 @@ typedef GLushort Index;
     {
         glGenFramebuffers(1, &_framebuffer_shadowMap);
         glBindFramebuffer(GL_FRAMEBUFFER, _framebuffer_shadowMap);
+        
         GLint level0 = 0;
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D,
                                _texture_shadowMap, level0);
@@ -469,13 +474,14 @@ typedef GLushort Index;
 - (void) initShadowMapMatrices
 {
     glm::vec3 eye = _lightSource.position_worldSpace;
-    glm::vec3 center = _particleSystem->getCenterOfTornado();
+    glm::vec3 center = glm::vec3(4.0f, -5.0f, -40.0f);
     glm::vec3 up(0.0f, 1.0f, 0.0);
     
     _lightViewMatrix = glm::lookAt(eye, center, up);
     
-    _lightProjectMatrix = glm::ortho(-50.0f, 50.0f, -50.0f, 50.0f, 0.1f, 200.0f);
-
+    float fovy = 45.0f;
+    float aspect = static_cast<float>(_framebufferSize.width) / _framebufferSize.height;
+    _lightProjectMatrix = glm::perspective(glm::radians(fovy), aspect, 0.1f, 250.0f);
 }
 
 //---------------------------------------------------------------------------------------
@@ -507,13 +513,13 @@ typedef GLushort Index;
             glGetUniformLocation(_shaderProgram_shadowMap, "cubeRandomness");
         
         _uniformLocations_shadowMap.modelMatrix =
-            glGetUniformLocation(_shaderProgram_shadowMap, "modelMatix");
+            glGetUniformLocation(_shaderProgram_shadowMap, "modelMatrix");
         
         _uniformLocations_shadowMap.lightViewMatrix =
-            glGetUniformLocation(_shaderProgram_shadowMap, "lightViewMatix");
+            glGetUniformLocation(_shaderProgram_shadowMap, "lightViewMatrix");
         
         _uniformLocations_shadowMap.lightProjectMatrix =
-            glGetUniformLocation(_shaderProgram_shadowMap, "lightProjectMatix");
+            glGetUniformLocation(_shaderProgram_shadowMap, "lightProjectMatrix");
     }
 }
 
@@ -546,7 +552,7 @@ typedef GLushort Index;
     
     
     // Convert lightSource position to EyeSpace.
-    _lightSource.position_worldSpace = glm::vec4(-2.0f, 5.0f, 5.0f, 1.0f);
+    _lightSource.position_worldSpace = glm::vec4(-5.0f, 5.0f, 15.0f, 1.0f);
     _lightSource.rgbIntensity = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
     
     
@@ -738,13 +744,11 @@ typedef GLushort Index;
 //---------------------------------------------------------------------------------------
 - (void) shadowMapPass
 {
-    glViewport(0, 0, _shadowMapSize.width, _shadowMapSize.height);
+    glPushGroupMarkerEXT(0, "Shadow Pass");
     
     glBindFramebuffer(GL_FRAMEBUFFER, _framebuffer_shadowMap);
     
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, _texture_shadowMap);
-    
+    glViewport(0, 0, _shadowMapSize.width, _shadowMapSize.height);
     glClear(GL_DEPTH_BUFFER_BIT);
     
     glCullFace(GL_FRONT);
@@ -759,13 +763,18 @@ typedef GLushort Index;
     
     // Restore default settings.
     glCullFace(GL_BACK);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    
     CHECK_GL_ERRORS;
+    glPopGroupMarkerEXT();
 }
 
 
 //---------------------------------------------------------------------------------------
 - (void) renderCubesWithGLKView: (GLKView *)glkView
 {
+    glPushGroupMarkerEXT(0, "Render Cubes");
+    
     FramebufferSize framebufferSize;
     framebufferSize.width = static_cast<GLint>(glkView.drawableWidth);
     framebufferSize.height = static_cast<GLint>(glkView.drawableHeight);
@@ -787,7 +796,7 @@ typedef GLushort Index;
                             numInstances);
                             
     CHECK_GL_ERRORS;
-    
+    glPopGroupMarkerEXT();
 }
 
 

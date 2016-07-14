@@ -61,5 +61,5 @@ void main() {
     pos = (modelMatrix * pos) + vec4(instancePos, 1.0);
     
     
-    gl_Position = lightProjectMatrix * (lightViewMatrix * vec4(position, 1.0f));
+    gl_Position = lightProjectMatrix * (lightViewMatrix * pos);
 }
