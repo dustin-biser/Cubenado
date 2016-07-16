@@ -271,9 +271,12 @@ GLuint ShaderProgram::programObject() const
 //------------------------------------------------------------------------------------
 GLint ShaderProgram::getUniformLocation (
     const char * uniformName
-) const {
+) const
+{
     GLint result =
         glGetUniformLocation(impl->programObject, (const GLchar *)uniformName);
+    
+    CHECK_GL_ERRORS;
 
 #if defined(DEBUG)
     if (result == -1) {
@@ -293,6 +296,8 @@ GLint ShaderProgram::getAttribLocation (
 ) const {
     GLint result =
         glGetAttribLocation(impl->programObject, (const GLchar *)attributeName);
+    
+    CHECK_GL_ERRORS;
 
 #if defined(DEBUG)
     if (result == -1) {

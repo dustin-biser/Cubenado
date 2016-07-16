@@ -74,6 +74,8 @@ typedef GLushort Index;
 
 - (void) loadCubeVertexData: (uint)maxCubes;
 
+- (void) loadGroundPlaneVertexData;
+
 - (void) initVertexAttribMappings;
 
 - (void) loadCubeUniforms;
@@ -153,7 +155,17 @@ typedef GLushort Index;
     ShaderProgram _shaderProgram_shadowMap;
     glm::mat4 _lightViewMatrix;
     glm::mat4 _lightProjectMatrix;
+    glm::mat4 _shadowMatrix;
     ShadowMapUniformLocations _uniformLocations_shadowMap;
+    
+    
+    // Ground plane
+    GLuint _vao_groundPlane;
+    GLuint _vbo_groundPlane;
+    GLuint _indexBuffer_groundPlane;
+    ShaderProgram _shaderProgram_groundPlane;
+    GLint _uniformLocation_shadowMatrix;
+    GLint _uniformLocation_sampler2DShadowMap;
 }
 
 
@@ -360,6 +372,44 @@ typedef GLushort Index;
     }
 }
 
+
+//---------------------------------------------------------------------------------------
+- (void) loadGroundPlaneVertexData
+{
+    std::vector<Vertex> vertexData = {
+        // Positions             Normals
+        { -0.5f,  0.0f,  0.5f,   0.0f,  1.0f,  0.0f}, // 0
+        {  0.5f,  0.0f,  0.5f,   0.0f,  1.0f,  0.0f}, // 1
+        {  0.5f,  0.0f, -0.5f,   0.0f,  1.0f,  0.0f}, // 2
+        { -0.5f,  0.0f, -0.5f,   0.0f,  1.0f,  0.0f}  // 3
+    };
+    
+    // Load Vertex Data for ground plane
+    {
+        glGenBuffers(1, &_vbo_groundPlane);
+        glBindBuffer(GL_ARRAY_BUFFER, _vbo_groundPlane);
+        const GLsizeiptr numBytes = sizeof(Vertex) * vertexData.size();
+        glBufferData(GL_ARRAY_BUFFER, numBytes, vertexData.data(), GL_STATIC_DRAW);
+        
+        CHECK_GL_ERRORS;
+    }
+    
+    std::vector<Index> indexData = {
+        0,2,3, 0,1,2
+    };
+    
+    // Load Index Data for ground plane
+    {
+        glGenBuffers(1, &_indexBuffer_cube);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _indexBuffer_cube);
+        size_t numBytes = indexData.size() * sizeof(Index);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, numBytes, indexData.data(), GL_STATIC_DRAW);
+        
+        CHECK_GL_ERRORS;
+    }
+}
+
+
 //---------------------------------------------------------------------------------------
 - (void)initVertexAttribMappings
 {
@@ -429,8 +479,8 @@ typedef GLushort Index;
         _shadowMapSize.width = 2.0f * _framebufferSize.width;
         _shadowMapSize.height = 2.0f * _framebufferSize.height;
         
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, _shadowMapSize.width,
-                     _shadowMapSize.height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, _shadowMapSize.width,
+                     _shadowMapSize.height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
         
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -482,6 +532,17 @@ typedef GLushort Index;
     float fovy = 45.0f;
     float aspect = static_cast<float>(_framebufferSize.width) / _framebufferSize.height;
     _lightProjectMatrix = glm::perspective(glm::radians(fovy), aspect, 0.1f, 250.0f);
+    
+    
+    // For scaling + translating shadow map coordinate
+    glm::mat4 biasMatrix = {
+        glm::vec4(0.5f, 0.0f, 0.0f, 0.0f), // column 0
+        glm::vec4(0.0f, 0.5f, 0.0f, 0.0f), // column 1
+        glm::vec4(0.0f, 0.0f, 0.5f, 0.0f), // column 2
+        glm::vec4(0.5f, 0.5f, 0.5f, 0.1f)  // column 3
+    };
+    
+    _shadowMatrix = biasMatrix * _lightProjectMatrix * _lightViewMatrix;
 }
 
 //---------------------------------------------------------------------------------------
@@ -497,7 +558,7 @@ typedef GLushort Index;
         
         // Query Cube Randomness uniform location
         _uniformLocation_cubeRandomness =
-            glGetUniformLocation(_shaderProgram_cube, "cubeRandomness");
+            _shaderProgram_cube.getUniformLocation("cubeRandomness");
     }
     
     
@@ -510,16 +571,16 @@ typedef GLushort Index;
         
         // Query uniform locations
         _uniformLocations_shadowMap.cubeRandomness =
-            glGetUniformLocation(_shaderProgram_shadowMap, "cubeRandomness");
+            _shaderProgram_shadowMap.getUniformLocation("cubeRandomness");
         
         _uniformLocations_shadowMap.modelMatrix =
-            glGetUniformLocation(_shaderProgram_shadowMap, "modelMatrix");
+            _shaderProgram_shadowMap.getUniformLocation("modelMatrix");
         
         _uniformLocations_shadowMap.lightViewMatrix =
-            glGetUniformLocation(_shaderProgram_shadowMap, "lightViewMatrix");
+            _shaderProgram_shadowMap.getUniformLocation("lightViewMatrix");
         
         _uniformLocations_shadowMap.lightProjectMatrix =
-            glGetUniformLocation(_shaderProgram_shadowMap, "lightProjectMatrix");
+            _shaderProgram_shadowMap.getUniformLocation("lightProjectMatrix");
     }
 }
 
@@ -794,7 +855,7 @@ typedef GLushort Index;
     const GLuint numInstances = _particleSystem->numActiveParticles();
     glDrawElementsInstanced(GL_TRIANGLES, _numCubeIndices, GL_UNSIGNED_SHORT, nullptr,
                             numInstances);
-                            
+    
     CHECK_GL_ERRORS;
     glPopGroupMarkerEXT();
 }

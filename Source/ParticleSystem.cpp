@@ -200,28 +200,28 @@ void ParticleSystemImpl::loadShaders() {
     //-- Query uniform locations:
     {
         m_uniformLocations.basisMatrix =
-            glGetUniformLocation(m_shaderProgram_TFUpdate, "basisMatrix");
+            m_shaderProgram_TFUpdate.getUniformLocation("basisMatrix");
 
         m_uniformLocations.derivMatrix =
-            glGetUniformLocation(m_shaderProgram_TFUpdate, "derivMatrix");
+            m_shaderProgram_TFUpdate.getUniformLocation("derivMatrix");
         
         m_uniformLocations.rotationRadius =
-            glGetUniformLocation(m_shaderProgram_TFUpdate, "rotationRadius");
+            m_shaderProgram_TFUpdate.getUniformLocation("rotationRadius");
         
         m_uniformLocations.rotationalVelocity =
-            glGetUniformLocation(m_shaderProgram_TFUpdate, "rotationalVelocity");
+            m_shaderProgram_TFUpdate.getUniformLocation("rotationalVelocity");
         
         m_uniformLocations.parametricVelocity =
-            glGetUniformLocation(m_shaderProgram_TFUpdate, "parametricVelocity");
+            m_shaderProgram_TFUpdate.getUniformLocation("parametricVelocity");
         
         m_uniformLocations.deltaTime =
-            glGetUniformLocation(m_shaderProgram_TFUpdate, "deltaTime");
+            m_shaderProgram_TFUpdate.getUniformLocation("deltaTime");
         
         m_uniformLocations.particleRandomness =
-            glGetUniformLocation(m_shaderProgram_TFUpdate, "particleRandomness");
+            m_shaderProgram_TFUpdate.getUniformLocation("particleRandomness");
         
         m_uniformLocations.numActiveParticles =
-            glGetUniformLocation(m_shaderProgram_TFUpdate, "numActiveParticles");
+            m_shaderProgram_TFUpdate.getUniformLocation("numActiveParticles");
         
     }
     
