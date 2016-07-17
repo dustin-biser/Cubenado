@@ -23,5 +23,6 @@ In addition to tornado motion, shadow mapping was used to render a shadow of the
 
 ## Performance Measure
 Below is a screen shot taken with XCode GPU Report of Cubenado running on an Apple A7 GPU.  Fluid framerate of 60fps was reported for simulating and rendering the maximum of 10k cube particles with shadows.  Notice also the reduced CPU usage per frame due to minimal updates on the CPU with nearly all work being processed on the GPU.  Therefore, for future enhancements there is a lot of room left to take advantage of CPU processing. 
-<img src="./Images/Cubenado Perf Analysis.png" height="300px">
 <img src="./Images/Cubenado 10K cubes.png" height="300px">
+<img src="./Images/Cubenado Perf Analysis.png" height="300px">
+
