@@ -13,6 +13,8 @@
 		0C233CDF1D275E8200977B5F /* ShaderProgram.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0C233CDD1D275E8200977B5F /* ShaderProgram.cpp */; };
 		0C233CE11D27875300977B5F /* TornadoParticleSimFS.glsl in Resources */ = {isa = PBXBuildFile; fileRef = 0C233CE01D27875300977B5F /* TornadoParticleSimFS.glsl */; };
 		0C233CE41D28587E00977B5F /* CubenadoRenderer.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0C233CE31D28587E00977B5F /* CubenadoRenderer.mm */; };
+		0C79217C1D3AA17800994411 /* GroundPlaneVS.glsl in Resources */ = {isa = PBXBuildFile; fileRef = 0C79217B1D3AA17800994411 /* GroundPlaneVS.glsl */; };
+		0C79217E1D3AA18D00994411 /* GroundPlaneFS.glsl in Resources */ = {isa = PBXBuildFile; fileRef = 0C79217D1D3AA18D00994411 /* GroundPlaneFS.glsl */; };
 		0C7B17931D24DE8C00D3E9E4 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0C7B17921D24DE8C00D3E9E4 /* UIKit.framework */; };
 		0C7B17951D24DEA900D3E9E4 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0C7B17941D24DEA900D3E9E4 /* Foundation.framework */; };
 		0CBD81911D28A4DD0059CB8F /* ParticleSystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0CBD81901D28A4DD0059CB8F /* ParticleSystem.cpp */; };
@@ -38,6 +40,8 @@
 		0C233CE01D27875300977B5F /* TornadoParticleSimFS.glsl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = TornadoParticleSimFS.glsl; sourceTree = "<group>"; };
 		0C233CE21D28587E00977B5F /* CubenadoRenderer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CubenadoRenderer.h; sourceTree = "<group>"; };
 		0C233CE31D28587E00977B5F /* CubenadoRenderer.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = CubenadoRenderer.mm; sourceTree = "<group>"; };
+		0C79217B1D3AA17800994411 /* GroundPlaneVS.glsl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = GroundPlaneVS.glsl; sourceTree = "<group>"; };
+		0C79217D1D3AA18D00994411 /* GroundPlaneFS.glsl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = GroundPlaneFS.glsl; sourceTree = "<group>"; };
 		0C7B17921D24DE8C00D3E9E4 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		0C7B17941D24DEA900D3E9E4 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		0C9AE3F61D2EF4C300947A44 /* NormRand.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = NormRand.hpp; sourceTree = "<group>"; };
@@ -87,6 +91,8 @@
 				0C233CE01D27875300977B5F /* TornadoParticleSimFS.glsl */,
 				0C1A47F01D2F3E65006F58D9 /* ShadowMapVS.glsl */,
 				0C1A47F21D2F3E78006F58D9 /* ShadowMapFS.glsl */,
+				0C79217B1D3AA17800994411 /* GroundPlaneVS.glsl */,
+				0C79217D1D3AA18D00994411 /* GroundPlaneFS.glsl */,
 			);
 			path = Assets;
 			sourceTree = "<group>";
@@ -212,8 +218,10 @@
 				0C233CE11D27875300977B5F /* TornadoParticleSimFS.glsl in Resources */,
 				0C1A47F11D2F3E65006F58D9 /* ShadowMapVS.glsl in Resources */,
 				0CE3D2B61D248EEB00FFB2B5 /* CubeFS.glsl in Resources */,
+				0C79217C1D3AA17800994411 /* GroundPlaneVS.glsl in Resources */,
 				0C1A47F31D2F3E78006F58D9 /* ShadowMapFS.glsl in Resources */,
 				0CE3D2B71D248EEB00FFB2B5 /* CubeVS.glsl in Resources */,
+				0C79217E1D3AA18D00994411 /* GroundPlaneFS.glsl in Resources */,
 				EF669886CA79788451A32520 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

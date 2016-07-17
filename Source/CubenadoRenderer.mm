@@ -76,7 +76,11 @@ typedef GLushort Index;
 
 - (void) loadGroundPlaneVertexData;
 
-- (void) initVertexAttribMappings;
+- (void) loadGroundPlaneUniforms;
+
+- (void) initVertexAttribMappingsForGoundPlane;
+
+- (void) initVertexAttribMappingsForCube;
 
 - (void) loadCubeUniforms;
 
@@ -87,7 +91,7 @@ typedef GLushort Index;
 - (void) setParticlePositionVboAttribMapping: (ParticleSystem *)particleSystem
                                      withVao: (GLuint)vao;
 
-- (void) setViewportIfFramebuferSizeChanged: (FramebufferSize)framebufferSize;
+- (void) setViewportIfViewSizeChanged: (GLKView *)glkView;
 
 - (void) setDefaultGLState;
 
@@ -97,7 +101,9 @@ typedef GLushort Index;
 
 - (void) shadowMapPass;
     
-- (void) renderCubesWithGLKView: (GLKView *)glkView;
+- (void) renderCubes;
+
+- (void) renderGroundPlane;
 
 @end // @interface CubenadoRenderer
     
@@ -164,8 +170,17 @@ typedef GLushort Index;
     GLuint _vbo_groundPlane;
     GLuint _indexBuffer_groundPlane;
     ShaderProgram _shaderProgram_groundPlane;
-    GLint _uniformLocation_shadowMatrix;
-    GLint _uniformLocation_sampler2DShadowMap;
+    GLsizei _numGroundPlaneIndices;
+    
+    struct GroundPlaneUniformLocations
+    {
+        GLint modelMatrix;
+        GLint viewProjectMatrix;
+        GLint normalMatrix;
+        GLint shadowMatrix;
+        GLint sampler2dShadowmap;
+    };
+    GroundPlaneUniformLocations _uniformLocations_groundPlane;
 }
 
 
@@ -201,7 +216,7 @@ typedef GLushort Index;
     
     [self loadCubeVertexData: maxCubes];
     
-    [self initVertexAttribMappings];
+    [self initVertexAttribMappingsForCube];
     
     [self setUBOBindings];
     
@@ -222,6 +237,12 @@ typedef GLushort Index;
     [self initShadowMapMatrices];
     
     [self loadShadowMapUniforms];
+
+    [self loadGroundPlaneVertexData];
+
+    [self initVertexAttribMappingsForGoundPlane];
+    
+    [self loadGroundPlaneUniforms];
 }
 
 //---------------------------------------------------------------------------------------
@@ -353,7 +374,7 @@ typedef GLushort Index;
         std::vector<CubeOrientation> orientationData(maxCubes);
         
         glm::vec3 axis;
-        const float maxAngle(M_PI * 0.5f);
+        const float maxAngle = static_cast<float>(M_PI * 0.5f);
         for(int i(0); i < maxCubes; ++i) {
             axis.x = rand0to1();
             axis.y = rand0to1();
@@ -384,7 +405,7 @@ typedef GLushort Index;
         { -0.5f,  0.0f, -0.5f,   0.0f,  1.0f,  0.0f}  // 3
     };
     
-    // Load Vertex Data for ground plane
+    // Load Vertex Data into Array Buffer for ground plane.
     {
         glGenBuffers(1, &_vbo_groundPlane);
         glBindBuffer(GL_ARRAY_BUFFER, _vbo_groundPlane);
@@ -398,10 +419,12 @@ typedef GLushort Index;
         0,2,3, 0,1,2
     };
     
-    // Load Index Data for ground plane
+    _numGroundPlaneIndices = static_cast<GLsizei>(indexData.size());
+    
+    // Load Index Data into Element Array Buffer for ground plane.
     {
-        glGenBuffers(1, &_indexBuffer_cube);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _indexBuffer_cube);
+        glGenBuffers(1, &_indexBuffer_groundPlane);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _indexBuffer_groundPlane);
         size_t numBytes = indexData.size() * sizeof(Index);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, numBytes, indexData.data(), GL_STATIC_DRAW);
         
@@ -411,10 +434,64 @@ typedef GLushort Index;
 
 
 //---------------------------------------------------------------------------------------
-- (void)initVertexAttribMappings
+- (void) loadGroundPlaneUniforms
+{
+    // Query uniform locations
+    {
+        _uniformLocations_groundPlane.modelMatrix =
+            _shaderProgram_groundPlane.getUniformLocation("modelMatrix");
+        
+        _uniformLocations_groundPlane.viewProjectMatrix =
+            _shaderProgram_groundPlane.getUniformLocation("viewProjectMatrix");
+        
+        _uniformLocations_groundPlane.shadowMatrix =
+            _shaderProgram_groundPlane.getUniformLocation("shadowMatrix");
+        
+        _uniformLocations_groundPlane.sampler2dShadowmap =
+            _shaderProgram_groundPlane.getUniformLocation("shadowMap");
+        
+        CHECK_GL_ERRORS;
+    }
+    
+    glm::mat4 modelMatrix = glm::scale(glm::mat4(), glm::vec3(200.0f, 1.0f, 200.0f));
+    modelMatrix = glm::translate(glm::mat4(), glm::vec3(0.0f, -9.0f, -50.0f)) * modelMatrix;
+    
+    glm::mat4 viewMatrix = _sceneTransforms.viewMatrix;
+    glm::mat4 viewProjectMatrix = _sceneTransforms.projectMatrix * viewMatrix;
+    
+    glm::mat4 shadowMatrix = _shadowMatrix;
+    
+    // Upload shader uniform data
+    {
+        _shaderProgram_groundPlane.enable();
+        
+        glUniformMatrix4fv(_uniformLocations_groundPlane.modelMatrix, 1, GL_FALSE,
+                           &modelMatrix[0][0]);
+        
+        glUniformMatrix4fv(_uniformLocations_groundPlane.viewProjectMatrix, 1, GL_FALSE,
+                           &viewProjectMatrix[0][0]);
+        
+        glUniformMatrix4fv(_uniformLocations_groundPlane.shadowMatrix, 1, GL_FALSE,
+                           &shadowMatrix[0][0]);
+        
+        const GLint textureUnit0(0);
+        glUniform1i(_uniformLocations_groundPlane.sampler2dShadowmap, textureUnit0);
+        
+        
+        CHECK_GL_ERRORS;
+    }
+    
+    
+}
+
+
+//---------------------------------------------------------------------------------------
+- (void)initVertexAttribMappingsForCube
 {
     glGenVertexArrays(1, &_vao_cube);
     glBindVertexArray(_vao_cube);
+    
+    // Record the index buffer to be used
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _indexBuffer_cube);
     
     // Enable vertex attribute slots
@@ -462,8 +539,53 @@ typedef GLushort Index;
         CHECK_GL_ERRORS;
     }
     
+    // Unbind vao
+    glBindVertexArray(0);
 }
 
+
+//---------------------------------------------------------------------------------------
+- (void) initVertexAttribMappingsForGoundPlane
+{
+    glGenVertexArrays(1, &_vao_groundPlane);
+    glBindVertexArray(_vao_groundPlane);
+    
+    // Record the index buffer to be used
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _indexBuffer_groundPlane);
+
+    // Enable vertex attribute slots
+    {
+        glEnableVertexAttribArray(ATTRIBUTE_POSITION);
+        glEnableVertexAttribArray(ATTRIBUTE_NORMAL);
+
+        CHECK_GL_ERRORS;
+    }
+
+    // Map position data from vertex buffer to vertex attribute slot.
+    {
+        GLint stride = sizeof(Vertex);
+        GLint startOffset(0);
+        glBindBuffer(GL_ARRAY_BUFFER, _vbo_groundPlane);
+        glVertexAttribPointer(ATTRIBUTE_POSITION, 3, GL_FLOAT, GL_FALSE, stride,
+                reinterpret_cast<const GLvoid *>(startOffset));
+
+        CHECK_GL_ERRORS;
+    }
+
+    // Map normal data from vertex buffer to vertex attribute slot.
+    {
+        GLint stride = sizeof(Vertex);
+        GLint startOffset = sizeof(Vertex::position);
+        glBindBuffer(GL_ARRAY_BUFFER, _vbo_groundPlane);
+        glVertexAttribPointer(ATTRIBUTE_NORMAL, 3, GL_FLOAT, GL_FALSE, stride,
+                reinterpret_cast<const GLvoid *>(startOffset));
+
+        CHECK_GL_ERRORS;
+    }
+    
+    // Unbind vao
+    glBindVertexArray(0);
+}
 
 //---------------------------------------------------------------------------------------
 - (void) initShadowPassResources
@@ -491,6 +613,7 @@ typedef GLushort Index;
         
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LESS);
+        
         
         glBindTexture(GL_TEXTURE_2D, 0);
         CHECK_GL_ERRORS;
@@ -531,7 +654,7 @@ typedef GLushort Index;
     
     float fovy = 45.0f;
     float aspect = static_cast<float>(_framebufferSize.width) / _framebufferSize.height;
-    _lightProjectMatrix = glm::perspective(glm::radians(fovy), aspect, 0.1f, 250.0f);
+    _lightProjectMatrix = glm::perspective(glm::radians(fovy), aspect, 0.1f, 500.0f);
     
     
     // For scaling + translating shadow map coordinate
@@ -539,7 +662,7 @@ typedef GLushort Index;
         glm::vec4(0.5f, 0.0f, 0.0f, 0.0f), // column 0
         glm::vec4(0.0f, 0.5f, 0.0f, 0.0f), // column 1
         glm::vec4(0.0f, 0.0f, 0.5f, 0.0f), // column 2
-        glm::vec4(0.5f, 0.5f, 0.5f, 0.1f)  // column 3
+        glm::vec4(0.5f, 0.5f, 0.5f, 1.0f)  // column 3
     };
     
     _shadowMatrix = biasMatrix * _lightProjectMatrix * _lightViewMatrix;
@@ -548,7 +671,7 @@ typedef GLushort Index;
 //---------------------------------------------------------------------------------------
 - (void) loadShaders
 {
-    // Create Cube Shader Program
+    // Create Cube ShaderProgram
     {
         _shaderProgram_cube.generateProgramObject();
         _shaderProgram_cube.attachVertexShader(_assetDirectory.at("CubeVS.glsl"));
@@ -562,7 +685,7 @@ typedef GLushort Index;
     }
     
     
-    // Create Shadow Map Shader Program
+    // Create Shadow Map ShaderProgram
     {
         _shaderProgram_shadowMap.generateProgramObject();
         _shaderProgram_shadowMap.attachVertexShader(_assetDirectory.at("ShadowMapVS.glsl"));
@@ -582,6 +705,15 @@ typedef GLushort Index;
         _uniformLocations_shadowMap.lightProjectMatrix =
             _shaderProgram_shadowMap.getUniformLocation("lightProjectMatrix");
     }
+    
+    
+    // Create Ground Plane ShaderProgram
+    {
+        _shaderProgram_groundPlane.generateProgramObject();
+        _shaderProgram_groundPlane.attachVertexShader(_assetDirectory.at("GroundPlaneVS.glsl"));
+        _shaderProgram_groundPlane.attachFragmentShader(_assetDirectory.at("GroundPlaneFS.glsl"));
+        _shaderProgram_groundPlane.link();
+    }
 }
 
 
@@ -590,13 +722,13 @@ typedef GLushort Index;
 {
     float fovy = 45.0f;
     float aspect = static_cast<float>(_framebufferSize.width) / _framebufferSize.height;
-    glm::mat4 projectionMatrix = glm::perspective(glm::radians(fovy), aspect, 0.1f, 100.0f);
+    glm::mat4 projectionMatrix = glm::perspective(glm::radians(fovy), aspect, 1.0f, 400.0f);
     
     
     glm::vec3 cameraLocation = {0.0f, 0.0f, 10.0f};
     glm::mat4 viewMatrix = glm::lookAt (
         cameraLocation,               // eye
-        glm::vec3{0.0f, 0.0f, -1.0f}, // center
+        glm::vec3{0.0f, 0.0f, -50.0f}, // center
         glm::vec3{0.0f, 1.0f, 0.0f}   // up
     );
     
@@ -613,7 +745,7 @@ typedef GLushort Index;
     
     
     // Convert lightSource position to EyeSpace.
-    _lightSource.position_worldSpace = glm::vec4(-5.0f, 5.0f, 15.0f, 1.0f);
+    _lightSource.position_worldSpace = glm::vec4(-6.0f, 16.0f, 25.0f, 1.0f);
     _lightSource.rgbIntensity = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
     
     
@@ -776,13 +908,17 @@ typedef GLushort Index;
 
 
 //---------------------------------------------------------------------------------------
-- (void) setViewportIfFramebuferSizeChanged: (FramebufferSize)framebufferSize
+- (void) setViewportIfViewSizeChanged: (GLKView *)glkView
 {
-    const bool widthNotEquath(_framebufferSize.width != framebufferSize.width);
-    const bool heightNotEquath(_framebufferSize.height != framebufferSize.height);
+    GLint width = static_cast<GLint>(glkView.drawableWidth);
+    GLint height = static_cast<GLint>(glkView.drawableHeight);
     
-    if(widthNotEquath || heightNotEquath) {
-        _framebufferSize = framebufferSize;
+    const bool widthChanged(_framebufferSize.width != width);
+    const bool heightChanged(_framebufferSize.height != height);
+    
+    if(widthChanged || heightChanged) {
+        _framebufferSize.width = width;
+        _framebufferSize.height = height;
         glViewport(0, 0, _framebufferSize.width, _framebufferSize.height);
     }
 }
@@ -798,7 +934,17 @@ typedef GLushort Index;
     
     [self shadowMapPass];
     
-    [self renderCubesWithGLKView: glkView];
+    [self setViewportIfViewSizeChanged: glkView];
+    
+    // Bind the GlkView framebuffer for rendering.
+    [glkView bindDrawable];
+    
+    // Clear framebuffer
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    
+    [self renderCubes];
+    
+    [self renderGroundPlane];
 }
 
 
@@ -832,21 +978,9 @@ typedef GLushort Index;
 
 
 //---------------------------------------------------------------------------------------
-- (void) renderCubesWithGLKView: (GLKView *)glkView
+- (void) renderCubes
 {
     glPushGroupMarkerEXT(0, "Render Cubes");
-    
-    FramebufferSize framebufferSize;
-    framebufferSize.width = static_cast<GLint>(glkView.drawableWidth);
-    framebufferSize.height = static_cast<GLint>(glkView.drawableHeight);
-    
-    [self setViewportIfFramebuferSizeChanged: framebufferSize];
-    
-    // Bind the GlkView framebuffer for rendering.
-    [glkView bindDrawable];
-    
-    // Clear framebuffer
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     
     _shaderProgram_cube.enable();
     glBindVertexArray(_vao_cube);
@@ -855,6 +989,24 @@ typedef GLushort Index;
     const GLuint numInstances = _particleSystem->numActiveParticles();
     glDrawElementsInstanced(GL_TRIANGLES, _numCubeIndices, GL_UNSIGNED_SHORT, nullptr,
                             numInstances);
+    
+    CHECK_GL_ERRORS;
+    glPopGroupMarkerEXT();
+}
+
+
+//---------------------------------------------------------------------------------------
+- (void) renderGroundPlane
+{
+    glPushGroupMarkerEXT(0, "Render Ground Plane");
+    
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, _texture_shadowMap);
+    
+    _shaderProgram_groundPlane.enable();
+    glBindVertexArray(_vao_groundPlane);
+    
+    glDrawElements(GL_TRIANGLES, _numGroundPlaneIndices, GL_UNSIGNED_SHORT, nullptr);
     
     CHECK_GL_ERRORS;
     glPopGroupMarkerEXT();
