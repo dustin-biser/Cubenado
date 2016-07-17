@@ -1,7 +1,7 @@
 # Cubenado
 OpenGL ES 3.0 demo for iOS
 
-<img src="./Images/Cubenado.png" height="400px">
+<img src="./Images/Cubenado_withShadow.png" height="400px">
 
 The goal for this demo is to animate a tornado of cubes with a high degree of adjustability in cube motion, as well as being able to handle up to 10K cubes with excellent framerate performance.
 
