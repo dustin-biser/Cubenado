@@ -20,6 +20,7 @@ using std::unordered_map;
 #import "ParticleSystem.hpp"
 #import "NormRand.hpp"
 #import "VertexAttributeDefines.h"
+#import "Mesh.hpp"
 
 
 struct Transforms {
@@ -53,14 +54,6 @@ static T align(T value, T alignment)
 }
 
 
-struct Vertex {
-    GLfloat position[3];
-    GLfloat normal[3];
-};
-
-typedef GLushort Index;
-
-
 
 @interface CubenadoRenderer()
 
@@ -78,9 +71,7 @@ typedef GLushort Index;
 
 - (void) loadGroundPlaneUniforms;
 
-- (void) initVertexAttribMappingsForGoundPlane;
-
-- (void) initVertexAttribMappingsForCube;
+- (void) initVertexAttribMappingsForCubeOrientation;
 
 - (void) loadCubeUniforms;
 
@@ -117,70 +108,65 @@ typedef GLushort Index;
     std::shared_ptr<ParticleSystem> _particleSystem;
     
     // Cube data
-    GLuint _vao_cube;
-    GLuint _vbo_cube;
-    GLuint _indexBuffer_cube;
-    GLsizei _numCubeIndices;
-    ShaderProgram _shaderProgram_cube;
-    
-    // Uniform Buffer Data
-    GLuint _ubo;
-    GLuint _uboBufferSize;
-    Transforms _sceneTransforms;
-    GLint _uniformBufferDataOffset_Transforms;
-    
-    LightSource _lightSource;
-    GLint _uniformBufferDataOffset_LightSource;
-    
-    Material _material;
-    GLint _uniformBufferDataOffset_Material;
-    
-    struct CubeOrientation {
-        glm::vec3 axis;
-        float maxAngle;
-    };
-    
-    // Cube orientation based on cube randomness
-    GLint _uniformLocation_cubeRandomness;
-    float _cubeRandomness;
-    GLuint _vbo_orientation;
+        Mesh _mesh_cube;
+        ShaderProgram _shaderProgram_cube;
+        struct CubeOrientation {
+            glm::vec3 axis;
+            float maxAngle;
+        };
+        
+        // Cube orientation based on cube randomness
+        GLint _uniformLocation_cubeRandomness;
+        float _cubeRandomness;
+        GLuint _vbo_cubeOrientation;
+
+        // Uniform Buffer Data
+        GLuint _ubo;
+        GLuint _uboBufferSize;
+        Transforms _sceneTransforms;
+        GLint _uniformBufferDataOffset_Transforms;
+        
+        LightSource _lightSource;
+        GLint _uniformBufferDataOffset_LightSource;
+        
+        Material _material;
+        GLint _uniformBufferDataOffset_Material;
     
     
-    struct ShadowMapUniformLocations
-    {
-        GLint modelMatrix;
-        GLint lightViewMatrix;
-        GLint lightProjectMatrix;
-        GLint cubeRandomness;
-    };
     
     // Shadow map
-    GLuint _texture_shadowMap;
-    CGSize _shadowMapSize;
-    GLuint _framebuffer_shadowMap;
-    ShaderProgram _shaderProgram_shadowMap;
-    glm::mat4 _lightViewMatrix;
-    glm::mat4 _lightProjectMatrix;
-    glm::mat4 _shadowMatrix;
-    ShadowMapUniformLocations _uniformLocations_shadowMap;
+        struct ShadowMapUniformLocations
+        {
+            GLint modelMatrix;
+            GLint lightViewMatrix;
+            GLint lightProjectMatrix;
+            GLint cubeRandomness;
+        };
+        ShadowMapUniformLocations _uniformLocations_shadowMap;
+        
+        GLuint _texture_shadowMap;
+        CGSize _shadowMapSize;
+        GLuint _framebuffer_shadowMap;
+        ShaderProgram _shaderProgram_shadowMap;
+        glm::mat4 _lightViewMatrix;
+        glm::mat4 _lightProjectMatrix;
+        glm::mat4 _shadowMatrix;
     
     
     // Ground plane
-    GLuint _vao_groundPlane;
-    GLuint _vbo_groundPlane;
-    GLuint _indexBuffer_groundPlane;
-    ShaderProgram _shaderProgram_groundPlane;
-    GLsizei _numGroundPlaneIndices;
+        struct GroundPlaneUniformLocations
+        {
+            GLint modelMatrix;
+            GLint viewProjectMatrix;
+            GLint normalMatrix;
+            GLint shadowMatrix;
+            GLint sampler2dShadowmap;
+        };
+        GroundPlaneUniformLocations _uniformLocations_groundPlane;
+
+        Mesh _mesh_groundPlane;
+        ShaderProgram _shaderProgram_groundPlane;
     
-    struct GroundPlaneUniformLocations
-    {
-        GLint modelMatrix;
-        GLint viewProjectMatrix;
-        GLint normalMatrix;
-        GLint shadowMatrix;
-        GLint sampler2dShadowmap;
-    };
-    GroundPlaneUniformLocations _uniformLocations_groundPlane;
 }
 
 
@@ -216,7 +202,7 @@ typedef GLushort Index;
     
     [self loadCubeVertexData: maxCubes];
     
-    [self initVertexAttribMappingsForCube];
+    [self initVertexAttribMappingsForCubeOrientation];
     
     [self setUBOBindings];
     
@@ -240,8 +226,6 @@ typedef GLushort Index;
 
     [self loadGroundPlaneVertexData];
 
-    [self initVertexAttribMappingsForGoundPlane];
-    
     [self loadGroundPlaneUniforms];
 }
 
@@ -290,7 +274,7 @@ typedef GLushort Index;
 - (void) loadCubeVertexData: (uint) maxCubes
 {
     // Cube vertex data.
-    std::vector<Vertex> vertexData = {
+    std::vector<Mesh::Vertex> vertexData = {
         // Positions             Normals
         // Bottom
         { -0.5f, -0.5f,  0.5f,   0.0f, -1.0f,  0.0f}, // 0
@@ -329,18 +313,10 @@ typedef GLushort Index;
         { -0.5f,  0.5f,  0.5f,   0.0f,  0.0f,  1.0f}, // 23
     };
     
-    // Load Vertex Data
-    {
-        glGenBuffers(1, &_vbo_cube);
-        glBindBuffer(GL_ARRAY_BUFFER, _vbo_cube);
-        size_t numBytes = vertexData.size() * sizeof(Vertex);
-        glBufferData(GL_ARRAY_BUFFER, numBytes, vertexData.data(), GL_STATIC_DRAW);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        
-        CHECK_GL_ERRORS;
-    }
+    _mesh_cube.uploadVertexData(vertexData);
     
-    std::vector<Index> indexData = {
+    
+    std::vector<Mesh::Index> indexData = {
         // Bottom
         3,1,0, 3,2,1,
         // Top
@@ -354,22 +330,13 @@ typedef GLushort Index;
         // Front
         20,21,23, 21,22,23
     };
-    _numCubeIndices = static_cast<GLsizei>(indexData.size());
     
-    // Load Index Data
-    {
-        glGenBuffers(1, &_indexBuffer_cube);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _indexBuffer_cube);
-        size_t numBytes = indexData.size() * sizeof(Index);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, numBytes, indexData.data(), GL_STATIC_DRAW);
-        
-        CHECK_GL_ERRORS;
-    }
+    _mesh_cube.uploadIndexData(indexData);
     
     
     // Load cube orientation data
     {
-        glGenBuffers(1, &_vbo_orientation);
+        glGenBuffers(1, &_vbo_cubeOrientation);
         
         std::vector<CubeOrientation> orientationData(maxCubes);
         
@@ -384,7 +351,7 @@ typedef GLushort Index;
         }
         
 
-        glBindBuffer(GL_ARRAY_BUFFER, _vbo_orientation);
+        glBindBuffer(GL_ARRAY_BUFFER, _vbo_cubeOrientation);
         
         GLsizeiptr numBytes = orientationData.size() * sizeof(CubeOrientation);
         glBufferData(GL_ARRAY_BUFFER, numBytes, orientationData.data(), GL_STATIC_DRAW);
@@ -397,7 +364,7 @@ typedef GLushort Index;
 //---------------------------------------------------------------------------------------
 - (void) loadGroundPlaneVertexData
 {
-    std::vector<Vertex> vertexData = {
+    std::vector<Mesh::Vertex> vertexData = {
         // Positions             Normals
         { -0.5f,  0.0f,  0.5f,   0.0f,  1.0f,  0.0f}, // 0
         {  0.5f,  0.0f,  0.5f,   0.0f,  1.0f,  0.0f}, // 1
@@ -405,31 +372,14 @@ typedef GLushort Index;
         { -0.5f,  0.0f, -0.5f,   0.0f,  1.0f,  0.0f}  // 3
     };
     
-    // Load Vertex Data into Array Buffer for ground plane.
-    {
-        glGenBuffers(1, &_vbo_groundPlane);
-        glBindBuffer(GL_ARRAY_BUFFER, _vbo_groundPlane);
-        const GLsizeiptr numBytes = sizeof(Vertex) * vertexData.size();
-        glBufferData(GL_ARRAY_BUFFER, numBytes, vertexData.data(), GL_STATIC_DRAW);
-        
-        CHECK_GL_ERRORS;
-    }
+    _mesh_groundPlane.uploadVertexData(vertexData);
     
-    std::vector<Index> indexData = {
+    std::vector<Mesh::Index> indexData = {
         0,2,3, 0,1,2
     };
+                                       
+    _mesh_groundPlane.uploadIndexData(indexData);
     
-    _numGroundPlaneIndices = static_cast<GLsizei>(indexData.size());
-    
-    // Load Index Data into Element Array Buffer for ground plane.
-    {
-        glGenBuffers(1, &_indexBuffer_groundPlane);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _indexBuffer_groundPlane);
-        size_t numBytes = indexData.size() * sizeof(Index);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, numBytes, indexData.data(), GL_STATIC_DRAW);
-        
-        CHECK_GL_ERRORS;
-    }
 }
 
 
@@ -486,106 +436,29 @@ typedef GLushort Index;
 
 
 //---------------------------------------------------------------------------------------
-- (void)initVertexAttribMappingsForCube
+- (void)initVertexAttribMappingsForCubeOrientation
 {
-    glGenVertexArrays(1, &_vao_cube);
-    glBindVertexArray(_vao_cube);
+    glBindVertexArray(_mesh_cube.vao());
     
-    // Record the index buffer to be used
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _indexBuffer_cube);
+    glEnableVertexAttribArray(ATTRIBUTE_INSTANCE_1);
     
-    // Enable vertex attribute slots
-    {
-        glBindVertexArray(_vao_cube);
-        glEnableVertexAttribArray(ATTRIBUTE_POSITION);
-        glEnableVertexAttribArray(ATTRIBUTE_NORMAL);
-        glEnableVertexAttribArray(ATTRIBUTE_INSTANCE_1);
+    
+    GLint stride = 0;
+    GLint startOffset = 0;
+    glBindBuffer(GL_ARRAY_BUFFER, _vbo_cubeOrientation);
+    glVertexAttribPointer(ATTRIBUTE_INSTANCE_1, 4, GL_FLOAT, GL_FALSE, stride,
+                          reinterpret_cast<GLvoid *>(startOffset));
+    
+    // Advance attribute once per instance.
+    glVertexAttribDivisor(ATTRIBUTE_INSTANCE_1, 1);
         
-        CHECK_GL_ERRORS;
-    }
-    
-    
-    // Position data
-    {
-        GLint stride = sizeof(Vertex);
-        GLint startOffset(0);
-        glBindBuffer(GL_ARRAY_BUFFER, _vbo_cube);
-        glVertexAttribPointer(ATTRIBUTE_POSITION, 3, GL_FLOAT, GL_FALSE, stride,
-                              reinterpret_cast<const GLvoid *>(startOffset));
-        CHECK_GL_ERRORS;
-    }
-    
-    // Normal data
-    {
-        GLint stride = sizeof(Vertex);
-        GLint startOffset = sizeof(Vertex::position);
-        glBindBuffer(GL_ARRAY_BUFFER, _vbo_cube);
-        glVertexAttribPointer(ATTRIBUTE_NORMAL, 3, GL_FLOAT, GL_FALSE, stride,
-                              reinterpret_cast<const GLvoid *>(startOffset));
-        CHECK_GL_ERRORS;
-    }
-    
-    // Cube orientation
-    {
-        GLint stride = 0;
-        GLint startOffset = 0;
-        glBindBuffer(GL_ARRAY_BUFFER, _vbo_orientation);
-        glVertexAttribPointer(ATTRIBUTE_INSTANCE_1, 4, GL_FLOAT, GL_FALSE, stride,
-                              reinterpret_cast<const GLvoid *>(startOffset));
-        
-        // Advance attribute once per instance.
-        glVertexAttribDivisor(ATTRIBUTE_INSTANCE_1, 1);
-        
-        CHECK_GL_ERRORS;
-    }
     
     // Unbind vao
     glBindVertexArray(0);
+    
+    CHECK_GL_ERRORS;
 }
 
-
-//---------------------------------------------------------------------------------------
-- (void) initVertexAttribMappingsForGoundPlane
-{
-    glGenVertexArrays(1, &_vao_groundPlane);
-    glBindVertexArray(_vao_groundPlane);
-    
-    // Record the index buffer to be used
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _indexBuffer_groundPlane);
-
-    // Enable vertex attribute slots
-    {
-        glEnableVertexAttribArray(ATTRIBUTE_POSITION);
-        glEnableVertexAttribArray(ATTRIBUTE_NORMAL);
-
-        CHECK_GL_ERRORS;
-    }
-
-    // Map position data from vertex buffer to vertex attribute slot.
-    {
-        GLint stride = sizeof(Vertex);
-        GLint startOffset(0);
-        glBindBuffer(GL_ARRAY_BUFFER, _vbo_groundPlane);
-        glVertexAttribPointer(ATTRIBUTE_POSITION, 3, GL_FLOAT, GL_FALSE, stride,
-                reinterpret_cast<const GLvoid *>(startOffset));
-
-        CHECK_GL_ERRORS;
-    }
-
-    // Map normal data from vertex buffer to vertex attribute slot.
-    {
-        GLint stride = sizeof(Vertex);
-        GLint startOffset = sizeof(Vertex::position);
-        glBindBuffer(GL_ARRAY_BUFFER, _vbo_groundPlane);
-        glVertexAttribPointer(ATTRIBUTE_NORMAL, 3, GL_FLOAT, GL_FALSE, stride,
-                reinterpret_cast<const GLvoid *>(startOffset));
-
-        CHECK_GL_ERRORS;
-    }
-    
-    // Unbind vao
-    glBindVertexArray(0);
-}
 
 //---------------------------------------------------------------------------------------
 - (void) initShadowPassResources
@@ -930,7 +803,7 @@ typedef GLushort Index;
 {
     
     [self setParticlePositionVboAttribMapping: _particleSystem.get()
-                                      withVao: _vao_cube];
+                                      withVao: _mesh_cube.vao()];
     
     [self shadowMapPass];
     
@@ -961,11 +834,11 @@ typedef GLushort Index;
     glCullFace(GL_FRONT);
     
     _shaderProgram_shadowMap.enable();
-    glBindVertexArray(_vao_cube);
+    glBindVertexArray(_mesh_cube.vao());
     
     const GLuint numInstances = _particleSystem->numActiveParticles();
-    glDrawElementsInstanced(GL_TRIANGLES, _numCubeIndices, GL_UNSIGNED_SHORT, nullptr,
-                            numInstances);
+    glDrawElementsInstanced(GL_TRIANGLES, _mesh_cube.numIndices(), GL_UNSIGNED_SHORT,
+                            nullptr, numInstances);
     
     
     // Restore default settings.
@@ -983,12 +856,12 @@ typedef GLushort Index;
     glPushGroupMarkerEXT(0, "Render Cubes");
     
     _shaderProgram_cube.enable();
-    glBindVertexArray(_vao_cube);
+    glBindVertexArray(_mesh_cube.vao());
     glBindBuffer(GL_UNIFORM_BUFFER, _ubo);
     
     const GLuint numInstances = _particleSystem->numActiveParticles();
-    glDrawElementsInstanced(GL_TRIANGLES, _numCubeIndices, GL_UNSIGNED_SHORT, nullptr,
-                            numInstances);
+    glDrawElementsInstanced(GL_TRIANGLES, _mesh_cube.numIndices(), GL_UNSIGNED_SHORT,
+                            nullptr, numInstances);
     
     CHECK_GL_ERRORS;
     glPopGroupMarkerEXT();
@@ -1004,9 +877,9 @@ typedef GLushort Index;
     glBindTexture(GL_TEXTURE_2D, _texture_shadowMap);
     
     _shaderProgram_groundPlane.enable();
-    glBindVertexArray(_vao_groundPlane);
+    glBindVertexArray(_mesh_groundPlane.vao());
     
-    glDrawElements(GL_TRIANGLES, _numGroundPlaneIndices, GL_UNSIGNED_SHORT, nullptr);
+    glDrawElements(GL_TRIANGLES, _mesh_groundPlane.numIndices(), GL_UNSIGNED_SHORT, nullptr);
     
     CHECK_GL_ERRORS;
     glPopGroupMarkerEXT();
