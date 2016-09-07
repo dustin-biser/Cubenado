@@ -8,7 +8,7 @@ The goal for this demo is to animate a tornado of cubes with a high degree of ad
 
 
 ## Implementation
-The curvature of the tornado is modeled using a 3rd degree Bezier curve.  Particle motion is simulated using transform feedback resulting in cubes that oribit around the tangents of the tornado Bezier curve.  During each frame, after particle simulation, the particles are rendered as instanced cubes, each with their own unique axis of orientation and position. 
+The curvature of the tornado is modeled using a 3rd degree Bezier curve.  Particle motion is simulated using transform feedback resulting in cubes that orbit around the tangents of the tornado Bezier curve.  During each frame, after particle simulation, the particles are rendered as instanced cubes, each with their own unique axis of orientation and position. 
 
 
 Increasing the cube randomness slider affects various aspects of the tornado motion:
